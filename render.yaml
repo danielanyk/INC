@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: rocket-flask
+    plan: starter
+    env: python
+    region: singapore  # region should be same as your database region.
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn run:flask_app"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 4

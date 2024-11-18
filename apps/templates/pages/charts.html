@@ -1,0 +1,418 @@
+{% extends "layouts/base.html" %}
+<!-- To replace existing charts.html -->
+ 
+<!-- {% block content %} -->
+<main>
+  <script src="/static/assets/editorTable.js"></script>
+  <div class="px-4 pt-6">
+    <div class="grid gap-4">
+      <!-- Annotator Section -->
+      <div id="batch-image"
+        class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+        <h3 class="text-base font-normal text-gray-500 dark:text-gray-400 pb-4">Select image(s) to annotate/re-annotate
+          with Labelme</h3>
+        <div class="flex space-x-4">
+          <div class="flex-1">
+            <label for="startDate" class="block text-sm font-medium text-gray-700 dark:text-gray-200">Start Date</label>
+            <input type="date" id="startDate" name="start-date"
+              class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          </div>
+          <div class="flex-1">
+            <label for="endDate" class="block text-sm font-medium text-gray-700 dark:text-gray-200">End Date</label>
+            <input type="date" id="endDate" name="end-date"
+              class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          </div>
+        </div>
+        <div class="pt-2"></div>
+        <div id="dropdown-btn"
+          class="dropdown-btn w-1/2 p-2 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+          Filter by Defect:
+          <div id="dropdown-content"
+            class="hidden dropdown-content mt-1 py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+          </div>
+        </div>
+        <div class="pt-2"></div>
+        <table id="batchImage-table" class="batchImage-table min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+          <thead class="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th scope="col"
+                class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                Batch Number
+              </th>
+              <th scope="col"
+                class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                Image Path
+              </th>
+              <th scope="col"
+                class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                Defect(s)
+              </th>
+              <th scope="col"
+                class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                View Image
+              </th>
+              <th scope="col" class="p-4 text-left text-center">
+                <label class="text-xs font-medium tracking-wider text-gray-500 uppercase dark:text-white">Select
+                  All</label><br>
+                <input type="checkbox" class="form-checkbox" id="selectAll" style="margin: auto; display: block;">
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white imagetbody dark:bg-gray-800">
+            <tr></tr>
+
+          </tbody>
+
+        </table>
+        <!-- Buttons -->
+        <div class="mt-4 flex justify-between w-full">
+          <div class="flex space-x-2">
+            <button type="button" id="loadMore"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+              Load More
+            </button>
+            <button type="button" id="filterButton"
+              class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+              Filter
+            </button>
+          </div>
+          <button type="button" id="openAnnotator"
+            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+            Open in Annotator
+          </button>
+        </div>
+      </div>
+
+
+
+
+    </div>
+  </div>
+
+</main>
+
+
+{% endblock content %}
+
+{% block extra_js %}
+
+<!-- <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script> -->
+<!-- <script>
+  document.getElementById('labelImgForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // Prevent the default form submission
+
+    const formData = new FormData(this); // 'this' refers to the form
+
+    fetch('/open_annotator', {
+      method: 'POST',
+      body: formData,
+    })
+    .then(response => response.json()) // Assuming the server responds with JSON
+    .then(data => {
+      if (data.success) {
+        console.log('Success:', data);
+        // Handle success, e.g., display a message or update the UI
+      } else if (data.error) {
+        console.error('Error:', data.error);
+        // Handle errors, e.g., display an error message
+      }
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+      // Handle network errors or other unexpected errors
+    });
+  });
+</script> -->
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+
+    // When the "selectAll" checkbox changes state
+    document.getElementById('selectAll').addEventListener('change', function () {
+      const isChecked = this.checked;
+      // Select all checkboxes within the table rows
+      const checkboxes = document.querySelectorAll('#batchImage-table td .form-checkbox');
+
+      // Set each checkbox to match the "selectAll" state
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+      });
+    });
+
+    // Event delegation for checkboxes within the table rows
+    document.querySelector('#batchImage-table').addEventListener('change', function (e) {
+      if (e.target && e.target.matches('td .form-checkbox')) {
+        // Select all checkboxes again
+        const allCheckboxes = document.querySelectorAll('#batchImage-table td .form-checkbox');
+        // Check if all checkboxes are checked
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+
+        // Set the "selectAll" checkbox based on whether all checkboxes are checked
+        document.getElementById('selectAll').checked = allChecked;
+      }
+    });
+  });
+
+  document.getElementById('openAnnotator').addEventListener('click', function () {
+    let selectedItems = [];
+    let batchNumbers = [];
+    let bboxes = [];
+    let defectLabels = [];
+
+    document.querySelectorAll('#batchImage-table td .form-checkbox:checked').forEach(checkedBox => {
+      const row = checkedBox.closest('tr');
+      const frameName = row.querySelector('.frame-name').textContent;
+      const batchNumber = row.querySelector('.batch-number').textContent;
+      selectedItems.push(frameName);
+      batchNumbers.push(batchNumber);
+    });
+
+    selectedItems.forEach(item => {
+      // Select all tr elements that contain a .frame-name element
+      const rows = Array.from(document.querySelectorAll('#batchImage-table tr')).filter(tr =>
+        tr.querySelector('.frame-name') && tr.querySelector('.frame-name').textContent.includes(item)
+      );
+
+      const itemBboxes = []; // Initialize itemBboxes array outside the rows loop
+      const itemDefectLabels = []; // Initialize itemDefectLabels array outside the rows loop
+
+      rows.forEach(row => {
+        // Find the td element with the class 'defects' within the row
+        const defectsTd = row.querySelector('td.defects');
+        if (defectsTd) {
+          // Iterate over child nodes of the defectsTd
+          defectsTd.childNodes.forEach(child => {
+            // Check if the child node is an element and has child nodes
+            if (child.nodeType === Node.ELEMENT_NODE && child.hasChildNodes()) {
+              // Find the span.hidden.bbox element within the child nodes
+              const bboxSpan = Array.from(child.childNodes).find(node =>
+                node.nodeType === Node.ELEMENT_NODE && node.classList.contains('bbox') && node.classList.contains('hidden')
+              );
+              if (bboxSpan) {
+                // Retrieve the value/textContent of the span.hidden.bbox element
+                console.log(bboxSpan.textContent); // Log the textContent of the .bbox element
+                itemBboxes.push(bboxSpan.textContent); // Push the textContent of the .bbox element into itemBboxes
+
+                // Get the data-label attribute of bboxSpan
+                const dataLabel = bboxSpan.getAttribute('data-label');
+                if (dataLabel) {
+                  console.log(dataLabel); // Log the data-label of the .bbox element
+                  itemDefectLabels.push(dataLabel); // Append the data-label to itemDefectLabels
+                }
+              }
+            }
+          });
+        }
+      });
+
+      if (itemBboxes.length > 0) {
+        bboxes.push(itemBboxes); // Push the collected itemBboxes for the current item into the global bboxes array
+      } else {
+        // Handle the case where no .bbox elements were found
+        bboxes.push(['']); // Push an array with a single whitespace to bboxes
+      }
+
+      // After processing all rows for the current item, push itemDefectLabels to defectLabels
+      if (itemDefectLabels.length > 0) {
+        defectLabels.push(itemDefectLabels);
+      } else {
+        // Handle the case where no data-labels were found
+        defectLabels.push(['']); // Push an array with a single whitespace to defectLabels
+      }
+    });
+
+    console.log(selectedItems);
+    console.log(batchNumbers);
+    console.log(bboxes);
+    console.log(defectLabels);
+
+    if (selectedItems.length > 0) {
+      fetch('/open_annotator', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ selectedItems, bboxes, defectLabels, batchNumbers }),
+      })
+        .then(response => response.json())
+        .then(data => console.log('Success:', data))
+        .catch((error) => console.error('Error:', error));
+    } else {
+      console.log('No items selected');
+    }
+  });
+</script>
+
+
+<script>
+
+  // Pull data from the backend
+  const products = JSON.parse('{{ products | tojson | safe }}');
+
+  function getProductsBarChart(data) {
+    return {
+      colors: ['#1A56DB', '#FDBA8C'],
+      series: [{
+        name: 'Product',
+        color: '#1A56DB',
+        data: data.map(product => ({ x: product.name, y: product.price }))
+      }],
+      chart: {
+        type: 'bar',
+        height: '420px',
+        fontFamily: 'Inter, sans-serif',
+        foreColor: '#4B5563',
+        toolbar: {
+          show: false
+        }
+      },
+      plotOptions: {
+        bar: {
+          columnWidth: '90%',
+          borderRadius: 3
+        }
+      },
+      tooltip: {
+        shared: true,
+        intersect: false,
+        style: {
+          fontSize: '14px',
+          fontFamily: 'Inter, sans-serif'
+        },
+      },
+      states: {
+        hover: {
+          filter: {
+            type: 'darken',
+            value: 1
+          }
+        }
+      },
+      stroke: {
+        show: true,
+        width: 5,
+        colors: ['transparent']
+      },
+      grid: {
+        show: false
+      },
+      dataLabels: {
+        enabled: false
+      },
+      legend: {
+        show: false
+      },
+      xaxis: {
+        floating: false,
+        labels: {
+          show: false
+        },
+        axisBorder: {
+          show: false
+        },
+        axisTicks: {
+          show: false
+        },
+      },
+      yaxis: {
+        show: false
+      },
+      fill: {
+        opacity: 1
+      }
+    };
+  }
+
+  const getProductsPieChart = (data) => {
+    let trafficChannelsChartColors = {};
+    if (document.documentElement.classList.contains('dark')) {
+      trafficChannelsChartColors = {
+        strokeColor: '#1f2937'
+      };
+    } else {
+      trafficChannelsChartColors = {
+        strokeColor: '#ffffff'
+      };
+    }
+
+    return {
+      series: data.map(product => product.price),
+      labels: data.map(product => product.name),
+      colors: ['#16BDCA', '#FDBA8C', '#1A56DB'],
+      chart: {
+        type: 'donut',
+        height: 400,
+        fontFamily: 'Inter, sans-serif',
+        toolbar: {
+          show: false
+        },
+      },
+      responsive: [{
+        breakpoint: 430,
+        options: {
+          chart: {
+            height: 300
+          }
+        }
+      }],
+      stroke: {
+        colors: [trafficChannelsChartColors.strokeColor]
+      },
+      states: {
+        hover: {
+          filter: {
+            type: 'darken',
+            value: 0.9
+          }
+        }
+      },
+      tooltip: {
+        shared: true,
+        followCursor: false,
+        fillSeriesColor: false,
+        inverseOrder: true,
+        style: {
+          fontSize: '14px',
+          fontFamily: 'Inter, sans-serif'
+        },
+        x: {
+          show: true,
+          formatter: function (_, { seriesIndex, w }) {
+            const label = w.config.labels[seriesIndex];
+            return label;
+          }
+        },
+        y: {
+          formatter: function (value) {
+            return value;
+          }
+        }
+      },
+      grid: {
+        show: false
+      },
+      dataLabels: {
+        enabled: false
+      },
+      legend: {
+        show: false
+      },
+    };
+  };
+
+  (async () => {
+    const productsBarChart = new ApexCharts(document.getElementById('products-bar-chart'), getProductsBarChart(products));
+    productsBarChart.render();
+
+    const productsPieChart = new ApexCharts(document.getElementById('products-pie-chart'), getProductsPieChart(products));
+    productsPieChart.render();
+
+    document.addEventListener('dark-mode', function () {
+      productsPieChart.updateOptions(getProductsPieChart(products));
+    });
+  })();
+
+</script>
+
+
+{% endblock extra_js %}

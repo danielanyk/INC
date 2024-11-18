@@ -1,0 +1,4 @@
+id,weights_file_name,loss,accuracy,cnn_error,datetime
+1,sev_classifier_patience_10.h5,0.9547,63.33,36.67,2024-08-01 02:06:28
+2,sev_classifier_test.h5,0.922,61.33,38.67,2024-08-01 15:11:30
+3,sev_classifier_test_2.h5,0.921,51.33,48.67,2024-08-01 15:12:06
