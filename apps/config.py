@@ -11,11 +11,12 @@ class Config(object):
 
     MONGO_URI = os.getenv('MONGO_URI', None)
 
-    CELERY_SCRIPTS_DIR        = os.path.join(basedir, "tasks_scripts" )
+    CELERY_SCRIPTS_DIR        = os.path.join(basedir, "tasks_scripts")
     CELERY_LOGS_URL           = "/tasks_logs/"
-    CELERY_LOGS_DIR           = os.path.join(basedir, "tasks_logs"    )
+    CELERY_LOGS_DIR           = os.path.join(basedir, "tasks_logs")
 
     MEDIA_FOLDER = os.path.join(basedir, "media")
+    PROFILE_FOLDER = os.path.join(basedir, "static", "dist", "img") #! New Change : Note This is placeholder as this folder will be not included in git track. Need new central pic folder.
 
     if not MONGO_URI:
         print('> Error: MongoDB URI is not set')

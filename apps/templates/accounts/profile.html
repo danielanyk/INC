@@ -46,13 +46,18 @@
         <h1 class="text-xl font-semibold text-gray-900 sm:text-2xl dark:text-white">User settings</h1>
     </div>
     <!-- Right Content -->
+    <!-- New Change -->
     <div class="col-span-full xl:col-auto">
         <div class="p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800">
             <div class="items-center sm:flex xl:block 2xl:flex sm:space-x-4 xl:space-x-0 2xl:space-x-4">
-                {% if profile.avatar %}
-                    <img class="mb-4 rounded-lg w-28 h-28 sm:mb-0 xl:mb-4 2xl:mb-0" src="{{ url_for('media_files', filename = profile.avatar )}}" alt="Jese picture">
+                {% if current_user.avatar %}
+                    <img class="mb-4 rounded-lg w-28 h-28 sm:mb-0 xl:mb-4 2xl:mb-0"
+                            src="{{ url_for('static', filename='dist/img/' + current_user.avatar) }}" 
+                            alt="Profile Picture">
                 {% else %}
-                    <img class="mb-4 rounded-lg w-28 h-28 sm:mb-0 xl:mb-4 2xl:mb-0" src="{{ url_for('static', filename='dist/img/default-user.png') }}" alt="Jese picture">
+                    <img class="mb-4 rounded-lg w-28 h-28 sm:mb-0 xl:mb-4 2xl:mb-0"
+                            src="{{ url_for('static', filename='dist/img/default-user.png') }}" 
+                            alt="Default Picture">
                 {% endif %}
                 <div>
                     {% if current_user.name %}
@@ -61,21 +66,21 @@
                         <h3 class="mb-1 text-xl font-bold text-gray-900 dark:text-white">{{ current_user.name }}</h3>
                     {% endif %}
                     <div class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                        JPG, GIF or PNG. Max size of 800K
+                        Here can change profile pictures!
                     </div>
-                    <form method="post" action="{{ url_for('authentication_blueprint.update_profile_image') }}" enctype="multipart/form-data" class="flex items-center space-x-4">
-                        
-                        <label for="avatar">
-                            <div class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 dark:bg-blue-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
-                                <svg class="w-4 h-4 mr-2 -ml-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z"></path><path d="M9 13h2v5a1 1 0 11-2 0v-5z"></path></svg>
-                                Upload picture
-                            </div>
-                        </label>
-                        <input onchange="this.form.submit()" type="file" class="hidden" name="avatar" id="avatar">
-                        <button type="button" class="py-2 px-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
-                            Delete
-                        </button>
-                    </form>
+
+                    <!--<button type="button" class="py-2 px-3 text-sm font-medium text-white focus:outline-none bg-red-700 text-center rounded-lg">
+                            Delete Account
+                        </button> -->
+                    
+                    <!-- Profile Picture Selection -->
+                    <!-- New Change -->
+                    <button type="button" id="open-modal" class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white rounded-lg bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 dark:bg-blue-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
+                        <svg class="w-4 h-4 mr-2 -ml-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z"></path><path d="M9 13h2v5a1 1 0 11-2 0v-5z"></path></svg>
+                        Select Picture
+                    </button>
+                    <!-- Include Modal -->
+                    {% include 'includes/profile_pic_selection_modal.html' %}
                 </div>
             </div>
         </div>
@@ -83,41 +88,87 @@
     <div class="col-span-2">
         <div class="p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800">
             <h3 class="mb-4 text-xl font-semibold dark:text-white">Account Information</h3>
-            <form method="post">
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="mb-4 text-sm font-semibold dark:text-white">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            <!-- New Change -->
+            <form method="post" action="{{ url_for('authentication_blueprint.change_account_permission') }}" onsubmit="return confirmAccountPermissionChange();">
 
                 <div class="grid grid-cols-6 gap-6">
-                    <button id="dropdownRadioBgHoverButton" data-dropdown-toggle="dropdownRadioBgHover" class="text-white bg-gray-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-blue-800" type="button">Permission <svg class="w-2.5 h-2.5 ms-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
+                    <!-- Dropdown Trigger -->
+                    <button id="dropdownRadioBgHoverButton" data-dropdown-toggle="dropdownRadioBgHover" 
+                        class="text-white bg-gray-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 
+                        font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center 
+                        dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-blue-800" 
+                        type="button">
+                        Permission 
+                        <svg class="w-2.5 h-2.5 ms-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
                         </svg>
-                        </button>
-                        
-                        <!-- Dropdown menu -->
-                        <div id="dropdownRadioBgHover" class="z-10 hidden w-48 bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-gray-700 dark:divide-gray-600">
-                            <ul class="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownRadioBgHoverButton">
-                              <li>
+                    </button>
+                    
+                    <!-- Dropdown Menu -->
+                    <div id="dropdownRadioBgHover" class="z-10 hidden w-48 bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-gray-700 dark:divide-gray-600">
+                        <ul class="p-3 space-y-1 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownRadioBgHoverButton">
+                            <!-- Admin Permission -->
+                            <li>
                                 <div class="flex items-center p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    <input {{ 'checked' if current_user.perm == 'Admin' else '' }} id="default-radio-4" type="radio" value="Admin" name="perm" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                    <input {{ 'checked' if current_user.perm == 'Admin' else '' }} id="default-radio-4" 
+                                        type="radio" value="Admin" name="perm" 
+                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 
+                                        dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 
+                                        focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
                                     <label for="default-radio-4" class="w-full ms-2 text-sm font-medium text-gray-900 rounded dark:text-gray-300">Admin</label>
                                 </div>
-                              </li>
-                              <li>
+                            </li>
+                            <!-- User Permission -->
+                            <li>
                                 <div class="flex items-center p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    <input {{ 'checked' if current_user.perm == 'User' else '' }} id="default-radio-5" type="radio" value="User" name="perm" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                                    <input {{ 'checked' if current_user.perm == 'User' else '' }} id="default-radio-5" 
+                                        type="radio" value="User" name="perm" 
+                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 
+                                        dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 
+                                        focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
                                     <label for="default-radio-5" class="w-full ms-2 text-sm font-medium text-gray-900 rounded dark:text-gray-300">User</label>
                                 </div>
-                              </li>
-                            </ul>
-                        </div>
+                            </li>
+                        </ul>
+                    </div>
+            
+                    <!-- Submit Button -->
                     <div class="col-span-6 sm:col-full">
-                        <button class="text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800" type="submit">Save all</button>
+                        <button class="text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 
+                            font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-primary-700 
+                            dark:focus:ring-primary-800" 
+                            type="submit">
+                            Change
+                        </button>
                     </div>
                 </div>
-                
-            </form>
+            </form>            
         </div>
         <div class="p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800">
             <h3 class="mb-4 text-xl font-semibold dark:text-white">Password information</h3>
-            <form method="post" action="{{ url_for('authentication_blueprint.change_password') }}">
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    <div class="mb-4 text-sm font-semibold dark:text-white">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            <form method="post" action="{{ url_for('authentication_blueprint.change_password') }}" onsubmit="return confirmPasswordChange();"> <!-- New Change -->
 
                 <div class="grid grid-cols-6 gap-6">
                     <div class="col-span-6 sm:col-span-3">
@@ -149,7 +200,7 @@
                         </div>
                     </div>
                     <div class="col-span-6 sm:col-full">
-                        <button class="text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800" type="submit">Save all</button>
+                        <button class="text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800" type="submit">Change Password</button>
                     </div>
                 </div>
             </form>
@@ -208,5 +259,15 @@
     });
 </script>
 
+<script>
+    function confirmPasswordChange() {
+        return confirm("Are you sure you want to change your password?");
+    }
+</script>
 
+<script>
+    function confirmAccountPermissionChange(){
+        return confirm("Are you sure you want to change your account type?")
+    }
+</script>
 {% endblock extra_js %}

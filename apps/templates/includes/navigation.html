@@ -61,13 +61,17 @@
             <div class="tooltip-arrow" data-popper-arrow></div>
           </div>
 
-          <div class="flex items-center ml-3">
+          <div class="flex items-center ml-3 items-center">
             <div>
               <button type="button"
                 class="flex text-sm bg-gray-800 rounded-full focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
                 id="user-menu-button-2" aria-expanded="false" data-dropdown-toggle="dropdown-2">
                 <span class="sr-only">Open user menu</span>
-                <img class="w-8 h-8 rounded-full" src="{{ url_for('static', filename='dist/img/default-user.png') }}" alt="user photo">
+                {% if current_user.avatar %}
+                  <img class="w-8 h-8 rounded-full" src="{{ url_for('static', filename='dist/img/' + current_user.avatar) }}" alt="user picture"><!-- Here Need to call the picture url -->
+                {% else %}
+                    <img class="w-8 h-8 rounded-full" src="{{ url_for('static', filename='dist/img/default-user.png') }}" alt="user picture">
+                {% endif %}
               </button>
             </div>
 

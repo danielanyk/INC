@@ -1,0 +1,148 @@
+{% block head %}
+<style>
+#modal {
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  inset: 0; /* Top, right, bottom, left: 0 */
+  z-index: 99;
+  overflow-y: hidden;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5); /* Optional background overlay */
+}
+
+article {
+  max-height: 90vh; /* Limit height */
+  max-width: 90vw; /* Limit width */
+  overflow-y: auto; /* Enable scrolling for long content */
+  background-color: white; /* Background for modal content */
+  border-radius: 16px; /* Rounded corners */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional shadow for better visibility */
+  padding: 16px; /* Add some padding */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+article::-webkit-scrollbar {
+  display: none;
+}
+
+.hidden-modal {
+  display: none;
+}
+
+.visible-modal {
+  display: flex;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="big_modal" class="hidden-modal">
+<div id="modal" class="fixed inset-0 items-center justify-center visible-modal">
+  <article class="max-h-[90vh] max-w-lg mx-auto bg-white rounded-2xl overflow-hidden flex flex-col shadow-xl">
+    <header class="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+      <h1 class="flex items-center gap-2 text-lg font-bold">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-8 h-8 text-purple-900">
+        <path fill="none" d="M0 0h24v24H0z" />
+        <path fill="currentColor" d="M12 4.5C7.305 4.5 3.135 7.61 1.5 12c1.635 4.39 5.805 7.5 10.5 7.5s8.865-3.11 10.5-7.5C20.865 7.61 16.695 4.5 12 4.5zm0 12c-2.485 0-4.5-2.015-4.5-4.5S9.515 7.5 12 7.5s4.5 2.015 4.5 4.5-2.015 4.5-4.5 4.5zm0-7.5c-1.655 0-3 1.345-3 3s1.345 3 3 3 3-1.345 3-3-1.345-3-3-3z" />
+        </svg>
+        Select an Image
+      </h1>
+      <button id="close-icon" class="icon-button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-6 h-6">
+          <path fill="none" d="M0 0h24v24H0z" />
+          <path
+            fill="currentColor"
+            d="M12 10.586l4.95-4.95 1.414 1.414-4.95 4.95 4.95 4.95-1.414 1.414-4.95-4.95-4.95 4.95-1.414-1.414 4.95-4.95-4.95-4.95L7.05 5.636z"
+          />
+        </svg>
+      </button>
+    </header>
+
+    <div class="p-8 pb-[51px] overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-lg p-4">             
+        <div class="grid grid-cols-3 gap-4">           
+          {% for image in images %}               
+            <img src="{{ url_for('static', filename=image) }}"                    
+                  alt="Profile Picture"                    
+                  onclick="selectImage(this)"                    
+                  class="cursor-pointer w-24 h-24 object-cover rounded-lg">           
+          {% endfor %}      
+        </div>           
+      </div>
+    </div>
+
+    <footer>
+      <div class="flex justify-end my-4 mr-2">
+        <button id="close-modal" class="close-modal px-4 py-2 bg-red-600 text-white rounded-lg">Close</button>
+        <button id="save-image" class="px-4 py-2 bg-blue-600 text-white rounded-lg ml-2">Save</button>       
+      </div> 
+    </footer>
+  </article>
+</div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+  const big_modal = document.getElementById('big_modal');
+const openModal = document.getElementById('open-modal');
+const closeModalButtons = document.querySelectorAll('.close-modal');
+const closeIcon = document.getElementById('close-icon');
+const saveImage = document.getElementById('save-image');
+let selectedImage = null;
+
+closeIcon.onclick = function () {
+  // console.log('X icon clicked');
+  big_modal.classList.remove('visible-modal');
+  big_modal.classList.add('hidden-modal');
+};
+
+openModal.onclick = function () {
+  big_modal.classList.remove('hidden-modal');
+  big_modal.classList.add('visible-modal');
+};
+
+closeModalButtons.forEach(button => {
+  button.onclick = function () {
+    // console.log('Close button clicked');
+    big_modal.classList.remove('visible-modal');
+    big_modal.classList.add('hidden-modal');
+  };
+});
+
+function selectImage(img) {
+  selectedImage = img.src;
+  document.querySelectorAll('#modal img').forEach(i => i.classList.remove('border-4', 'border-blue-500'));
+  img.classList.add('border-4', 'border-blue-500');
+}
+
+saveImage.onclick = function () {
+    if (selectedImage) {
+        const imageName = selectedImage.split('/').pop(); // Extract file name from full path
+
+        fetch('/update_profile_picture', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: imageName }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                console.log('Success:', data.message);
+                location.reload(); // Refresh the page to show the new profile picture
+            } else {
+                console.error('Error:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+};
+</script>
+{% endblock extra_js %}
