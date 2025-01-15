@@ -1,6 +1,6 @@
 
 import os
-from flask import render_template, redirect, request, url_for
+from flask import render_template, redirect, request, url_for, flash, jsonify
 from flask_login import (
     current_user,
     login_user,
@@ -97,59 +97,125 @@ def logout():
 def profile():
     context = {}
     profile = Users.get_by_id(current_user._id)
+
+    #! New Change : Load images from the profile pictures folder
+    image_folder = os.path.join(Config.PROFILE_FOLDER)
+    if os.path.exists(image_folder):
+        images = [f'dist/img/{file}' for file in os.listdir(image_folder) if file.endswith(('png', 'jpg', 'jpeg', 'gif'))]
+    else:
+        images = []
+
     if request.method == 'POST':
         update_fields = {f"{attribute}": value for attribute, value in request.form.items()}
         db.users.update_one({"_id": ObjectId(current_user._id)}, {"$set": update_fields})
         
     context['segment'] = 'profile'
     context['profile'] = profile
+
+    context['images'] = images  #! New Change : Pass images to the template
+
     return render_template('accounts/profile.html', **context)
 
-
+#! Can use this function if want to add the ability to upload profile image from outside
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@blueprint.route('/profile-image/', methods=['POST'])
+@blueprint.route('/update_profile_picture', methods=['POST'])
 @login_required
-def update_profile_image():
-    profile = Profile.find_by_user_id(current_user.id)
+def update_profile_picture():
+    """Update the user's profile picture in MongoDB."""
 
-    if 'avatar' not in request.files:
+    try:
+        data = request.get_json()
+        selected_image = data.get('image')  # Image path sent via AJAX
+
+        if not selected_image:
+            return jsonify({'error': 'No image provided'}), 400
+
+        if selected_image:
+            # Extract just the filename from the image path
+            image_name = os.path.basename(selected_image)
+
+            # Update MongoDB with the selected image name
+            db.users.update_one(
+                {"_id": ObjectId(current_user._id)},
+                {"$set": {"avatar": image_name}}
+            )
+            return jsonify({"status": "success", "message": "Profile picture updated successfully"}), 200
+
+        return jsonify({"status": "error", "message": "No image selected"}), 400
+    except Exception as e:
+        return jsonify ({'error': str(e)}), 500
+
+### Change here for account permission
+@blueprint.route('/change-account-permission', methods=['POST', 'GET'])
+@login_required
+def change_account_permission():
+    """Handles changes to account permissions for the logged-in user."""
+    current_user_id = current_user._id
+    current_user_perm = current_user.get_user_perm()
+
+    # Ensure the current user has a valid ID
+    if not current_user_id:
+        flash("Unable to identify the user. Please try again.", "danger")
         return redirect(url_for('authentication_blueprint.profile'))
 
-    file = request.files['avatar']
+    if request.method == 'POST':
+        # Fetch form data
+        new_permission = request.form.get('perm')
 
-    if file.filename == '':
+        # Check if the permission level has changed
+        if new_permission == current_user_perm:
+            flash("No changes made. Permission level remains the same.", "info")
+            return redirect(url_for('authentication_blueprint.profile'))
+
+        # Validation: Ensure new permission level is provided
+        if not new_permission:
+            flash("Permission level is required.", "danger")
+            return redirect(url_for('authentication_blueprint.profile'))
+
+        # Fetch the current user from the database
+        user = Users.get_by_id(current_user_id)
+        if not user:
+            flash("User not found.", "danger")
+            return redirect(url_for('authentication_blueprint.profile'))
+
+        # Update and save the user's permission
+        user.perm = new_permission
+        user.save()
+
+        flash(f"Permission updated to '{new_permission}' for user '{user.username}'.", "success")
         return redirect(url_for('authentication_blueprint.profile'))
 
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(Config.MEDIA_FOLDER, filename))
-
-        profile.avatar = filename
-        db.session.commit()
-
-        return redirect(url_for('authentication_blueprint.profile'))
-
+    # Redirect for non-POST requests
     return redirect(url_for('authentication_blueprint.profile'))
 
-
-
-@blueprint.route('/change-password', methods=['POST'])
+### Change here for password error
+@blueprint.route('/change-password', methods=['POST', 'GET']) #! New Change
 @login_required
 def change_password():
     if request.method == 'POST':
         current_password = request.form['current_password']
         new_password = request.form['new_password']
 
-        user = Users.query.filter_by(username=current_user.username).first()
+        if not current_password or not new_password: #! New Change
+            flash('Please fill in all fields.', 'danger')
+            return redirect(url_for('authentication_blueprint.profile'))
 
-        if user and verify_pass(current_password, user.password):
-            current_user.password = hash_pass(new_password)
-            db.session.commit()
+        user = Users.get_by_username(current_user.username) #! New Change
+
+        if user and user.check_password(current_password):
+            # Update the password using set_password
+            user.set_password(new_password)
+        
+            # Save the updated user data
+            user.save()
+
+            flash('Password updated successfully!', 'success')
             return redirect(url_for('authentication_blueprint.profile'))
         else:
+            flash('Incorrect current password. Please try again.', 'danger')
             return redirect(url_for('authentication_blueprint.profile'))
     else:
         return redirect(url_for('authentication_blueprint.profile'))
