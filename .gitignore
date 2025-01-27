@@ -69,3 +69,5 @@ Batches
 apps/home/Engines/configs/_base_
 apps/static/dist/images
 A_QGIS/MongoDB Connection/data
+
+black/
