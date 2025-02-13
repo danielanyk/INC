@@ -14,9 +14,14 @@ python -m venv env
 call env\Scripts\activate
 
 echo Installing compatible PyTorch and CUDA...
-pip install torch==1.13.0 -f https://download.pytorch.org/whl/cu117/torch-1.13.0%2Bcu117-cp39-cp39-win_amd64.whl
-pip install torchvision==0.14.0 -f https://download.pytorch.org/whl/cu117/torch_stable.html
-pip install torchaudio==0.13.0 -f https://download.pytorch.org/whl/cu117/torch_stable.html
+@REM pip install torch==1.13.0 -f https://download.pytorch.org/whl/cu117/torch-1.13.0%2Bcu117-cp39-cp39-win_amd64.whl
+@REM pip install torchvision==0.14 -f https://download.pytorch.org/whl/cu117/torch_stable.html
+@REM pip install torchaudio==0.13.0 -f https://download.pytorch.org/whl/cu117/torch_stable.html
+
+pip install torch==2.2.2 -f https://download.pytorch.org/whl/cu117/torch-1.13.0%2Bcu117-cp39-cp39-win_amd64.whl
+pip install torchvision==0.17.2 -f https://download.pytorch.org/whl/cu117/torch_stable.html
+pip install torchaudio==2.2.2 -f https://download.pytorch.org/whl/cu117/torch_stable.html
+
 
 echo Installing compatible mmcv...
 pip install -U openmim

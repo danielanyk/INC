@@ -1,0 +1,15 @@
+{
+    "number_of_missing_signs": 1,
+    "missing_signs_details": [
+        {
+            "lane_marking_id": 1.0,
+            "marking_type": "Crosswalk",
+            "frame_range": [
+                10,
+                15
+            ],
+            "missing_sign_type": "Pedestrian Crossing",
+            "frame_path": "C:\\Users\\DanielYeoh\\Downloads\\9251-traffic-1\\apps\\static\\outputs\\24a2c75d-d915-41f0-b55b-f36d3dc38cc5\\marking_1.0_frame.jpg"
+        }
+    ]
+}

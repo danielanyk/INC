@@ -3,7 +3,7 @@
 
 @REM !!!!!!!!!!! Set path to QGIS installation (Change accordingly, version yad has is Long Term Release(LTR))
 @REM SET "QGIS_PATH=C:\Program Files\QGIS 3.34.5\bin"
-SET "QGIS_PATH=C:\Program Files\QGIS 3.38.2\bin"
+SET "QGIS_PATH=C:\Program Files\QGIS 3.38.1\bin"
 
 @REM Get the current working directory to dynamically set directories, shld return C:\Users\....\....\fyp_teampink\A_QGIS
 SET "CURRENT_DIR=%CD%"
@@ -32,16 +32,15 @@ IF EXIST %directory% (
 ECHO "CURRENT_DIR: %CURRENT_DIR%"
 
 @REM GET DIRECTORY FOR SEVERITY: Navigate up from CURRENT_DIR (inside A_QGIS) to TSM-Deploy-3-6-2024
-@REM SET "FYP_BASE_PATH=%CURRENT_DIR%\.."     snk
-SET "FYP_BASE_PATH=C:\Dev\TSM-Deploy-3-6-2024-Final-Deployment\"    
+SET "FYP_BASE_PATH=%CURRENT_DIR%\.."
+SET "FYP_BASE_PATH=%FYP_BASE_PATH%"
 
 @REM GET DIRECTORY FOR SEVERITY: Output FYP_BASE_PATH
 ECHO FYP_BASE_PATH: %FYP_BASE_PATH%
 
 @REM !!!!!!!!!!! Run either one of the commands below, depending on your QGIS version: 
 @REM 1. Run QGIS with the Python script
-@REM "%QGIS_PATH%\qgis-bin.exe" --code "%SCRIPT_PATH%"  snk
-"C:\Program Files\QGIS 3.38.2\bin\qgis-bin.exe" --code "C:\Dev\TSM-Deploy-3-6-2024-Final-Deployment\A_QGIS\MongoDB Connection\QGIS Project Setup.py"
+"%QGIS_PATH%\qgis-bin.exe" --code "%SCRIPT_PATH%"
 
 @REM 2. Run QGIS LTR with the project file and the startup script
 @REM "%QGIS_PATH%\qgis-ltr-bin.exe" --code "%SCRIPT_PATH%"

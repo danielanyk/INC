@@ -101,7 +101,6 @@ function getAllTags() {
 
 function fetchReports(batch, defectFilters, severity, customTags, town, startDate, endDate) {
     
-    console.log(batch, defectFilters, severity, customTags, town, startDate, endDate);
     fetch('/get_reports', {
         method: 'POST',
         headers: {
@@ -990,7 +989,7 @@ function generateSummarizerHandler() {
         summaryContainer.className = 'text-base font-normal text-gray-500 dark:text-white';
     })
     .catch(error => {
-        console.error('Error:', error);
+        // console.error('Error:', error);
         summaryContainer.innerHTML = "Error: " + error; 
     });
 }

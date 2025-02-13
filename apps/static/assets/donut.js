@@ -24,7 +24,7 @@ function bruh(){
           defectsCount[severityLabel] += 1;
         })
       });
-      if (Object.values(defectsCount)==[0,0,0,0])
+      if (Object.values(defectsCount).every(val => val === 0))
         {
           
         }
@@ -59,7 +59,7 @@ function bruh(){
       colors: [colors.primary, colors.tertiary, colors.secondary, colors.quaternary],
       chart: {
         height: 400,
-        width: '100%',
+        width: 400,
         type: 'donut',
         fontFamily: fontFamily,
         foreColor: colors.labelColor
@@ -144,7 +144,7 @@ function bruh(){
   
 
   if (document.getElementById('donut-chart') && typeof ApexCharts !== 'undefined') {
-    chart = new ApexCharts(document.getElementById('donut-chart'), getChartOptions())
+    var chart = new ApexCharts(document.getElementById('donut-chart'), getChartOptions())
     chart.render()
 
     // init again when toggling dark mode

@@ -22,8 +22,34 @@
         updateElements();
         updateS();
       });
-
       function updateElements() {
+        var multiplier=0
+        var count=0
+        if (document.getElementById('toggle1').checked==true){
+          multiplier+=22
+          count+=1
+        }
+        if (document.getElementById('toggle2').checked==true){
+          multiplier+=24
+          count+=1
+        }
+        if (document.getElementById('toggle3').checked==true){
+          multiplier+=125
+          count+=1
+        }
+        if (document.getElementById('toggle4').checked==true){
+          multiplier+=8
+          count+=1
+        }
+        if (count>1){
+          multiplier+=5.5
+        }
+        // if (count==3){
+        //   multiplier+=10
+        // }
+        // if (count==4){
+        //   multiplier+=15
+        // }
         if (document.getElementById('loading-status').textContent!='completed'){
         // Convert total frames to HH:MM:SS format
         const hours = Math.floor(totalF / 3600).toString().padStart(2, '0');
@@ -32,27 +58,86 @@
         document.getElementById('videoLength').textContent = `${hours}:${minutes}:${seconds}`;
 
         // Calculate remaining processing time in HH:MM:SS format
-        const totalF2 = (totalF - framesProcessed) * 10;
+        const totalF2 = (totalF - framesProcessed) * multiplier;
         const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
         const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
         const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
         document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
 
-        document.getElementById('frame-info').textContent = `${framesProcessed}/${totalF}`;
+        if (totalF==0) {
+            document.getElementById('frame-info').textContent = `0`;
+          }
+          else{
+            document.getElementById('frame-info').textContent = `${framesProcessed}/${totalF}`;
+          }
         }
         else{
           document.getElementById('processingHeader').textContent = "Time Taken To Process";
           document.getElementById('frame-header').textContent = "Defect Frames Out Of Total Frames";
-          const totalF2 = (totalF) * 10;
+          const totalF2 = (totalF) * multiplier;
           const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
           const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
           const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
           document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
-          const b = document.getElementById("defect-table").rows.length - 1;
-          document.getElementById('frame-info').textContent = `${b}/${totalF}`;
-
+          var b = document.getElementById("defect-table").rows.length -1;
+          if (b<=0) {
+            b=0
+          }else if (b>totalF) {
+            b=totalF
+          }
+          if (totalF==0) {
+            document.getElementById('frame-info').textContent = `0`;
+          }
+          else{
+            document.getElementById('frame-info').textContent = `${b}/${totalF}`;
+          }
         }
       }
+
+      // function updateElements() {
+      //   if (document.getElementById('loading-status').textContent!='completed'){
+      //   // Convert total frames to HH:MM:SS format
+      //   const hours = Math.floor(totalF / 3600).toString().padStart(2, '0');
+      //   const minutes = Math.floor((totalF % 3600) / 60).toString().padStart(2, '0');
+      //   const seconds = (totalF % 60).toString().padStart(2, '0');
+      //   document.getElementById('videoLength').textContent = `${hours}:${minutes}:${seconds}`;
+
+      //   // Calculate remaining processing time in HH:MM:SS format
+      //   const totalF2 = (totalF - framesProcessed) * 10;
+      //   const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
+      //   const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
+      //   const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
+      //   document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
+
+      //   if (totalF==0) {
+      //       document.getElementById('frame-info').textContent = `0`;
+      //     }
+      //     else{
+      //       document.getElementById('frame-info').textContent = `${framesProcessed}/${totalF}`;
+      //     }
+      //   }
+      //   else{
+      //     document.getElementById('processingHeader').textContent = "Time Taken To Process";
+      //     document.getElementById('frame-header').textContent = "Defect Frames Out Of Total Frames";
+      //     const totalF2 = (totalF) * 10;
+      //     const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
+      //     const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
+      //     const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
+      //     document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
+      //     var b = document.getElementById("defect-table").rows.length -1;
+      //     if (b<=0) {
+      //       b=0
+      //     }else if (b>totalF) {
+      //       b=totalF
+      //     }
+      //     if (totalF==0) {
+      //       document.getElementById('frame-info').textContent = `0`;
+      //     }
+      //     else{
+      //       document.getElementById('frame-info').textContent = `${b}/${totalF}`;
+      //     }
+      //   }
+      // }
 
       var bID={{batchID}};
       function updateS(){
@@ -60,8 +145,12 @@
           .then(response => response.json())
           .then(data => {
             framesProcessed = data.framesProcessed;
-            var percent = (data.framesProcessed / totalF * 100).toFixed(1);
-          
+            if (totalF==0) {
+              var percent = 0
+            }
+            else{
+              var percent = (data.framesProcessed / totalF * 100).toFixed(1);
+            }
             document.getElementById('loading-status').textContent = data.status;
             document.getElementById('loading-percent').textContent = percent + '%';
             document.getElementById('loading-bar').style.width = percent + '%';
@@ -118,14 +207,45 @@
         </div>
       </div>
       <!--Tabs widget -->
-      <div
-        class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+      <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
           <div class="flex justify-between mb-3">
               <div class="flex justify-center items-center">
-                  <h5 class="text-xl font-bold leading-none text-gray-900 dark:text-white pe-1">Defects</h5>
+                <h5 class="text-xl font-bold leading-none text-gray-900 dark:text-white pe-1">Defect AI Toggles</h5>  
+                <!-- <h5 class="text-xl font-bold leading-none text-gray-900 dark:text-white pe-1">Defects</h5> -->
                 </div>
-              <div>
-                <button type="button" data-tooltip-target="data-tooltip" data-tooltip-placement="bottom" class="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm"><svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 18">
+              </div>
+              <div class="toggle-group leading-none text-gray-900 dark:text-white pe-1">
+                <div class="toggle">
+                    <label for="toggle1">Raveling</label>
+                    <input type="checkbox" id="toggle1" checked>
+                </div>
+                
+                <div class="toggle">
+                    <label for="toggle3">Kerb</label>
+                    <input type="checkbox" id="toggle3" checked>
+                </div>
+                <div class="toggle">
+                    <label for="toggle4">Paint Spillage</label>
+                    <input type="checkbox" id="toggle4" checked>
+                </div>
+                <div class="toggle">
+                  <label for="toggle2">Cracks and peeling</label>
+                  <input type="checkbox" id="toggle2" checked>
+              </div>
+              </div>
+              <script src="/static/assets/toggleCheck.js"></script>
+            <div>
+              <button></button>
+            </div>
+        </div>
+              
+              
+              
+              
+                <!-- <div>
+
+                <button type="button" data-tooltip-target="data-tooltip" data-tooltip-placement="bottom" class="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm">
+                  <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 18">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 1v11m0 0 4-4m-4 4L4 8m11 4v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3"/>
           </svg><span class="sr-only">Download data</span>
                 </button>
@@ -137,10 +257,10 @@
           </div>
         
           <div>
-          <!-- Donut Chart -->
+           Donut Chart
           <div class="py-6" id="donut-chart"></div>
         </div>
-      </div>
+      </div> -->
     </div>
 
     <div class="grid w-full grid-cols-1 gap-4 mt-4 xl:grid-cols-2 2xl:grid-cols-3">
@@ -161,7 +281,7 @@
         class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div>
           <h3 id="frame-header" class="text-lg font-normal text-gray-500 dark:text-gray-400">Number of Frames Processed</h3>
-          <span id="frame-info" class="text-4xl font-bold text-gray-900 dark:text-white">{{framesProcessed}}/{{totalFrames}}</span>
+          <span id="frame-info" class="text-4xl font-bold text-gray-900 dark:text-white">{0}</span>
         </div>
         <svg id='Layers_Back_24' height='48' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'
           xmlns:xlink='http://www.w3.org/1999/xlink'>
@@ -248,7 +368,7 @@
                   <!-- Modal header -->
                   <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
                       <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                          Chnage Inspection Date
+                          Change Inspection Date
                       </h3>
                       <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="default-modal">
                           <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
@@ -403,10 +523,10 @@
               <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white text-center">
                 Filter by
               </h6>
-              <ul class="space-y-2 text-sm" aria-labelledby="dropdownDefault">
+              <ul class="space-y-2 text-sm dark:text-white" aria-labelledby="dropdownDefault">
                 <li class="flex items-center">
-                  <select id="imagePathFilter" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" style="color: white;">
-                    <option disabled selected value="" style="color: white;">Video</option>
+                  <select id="imagePathFilter" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+                    <option disabled selected value="" class="dark:text-white">Video</option>
                   </select>
                 </li>
 
@@ -421,83 +541,83 @@
                       </svg>
                     </button>
                     <div id="dropdown2" class="z-10 hidden w-30 p-3 bg-white rounded-lg shadow dark:bg-gray-700 flex flex-col items-center">
-                      <h6 class="mb-3 text-sm font-medium text-gray-900" style="color: white;">Filter by</h6>
+                      <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white" >Filter by</h6>
                       <ul class="space-y-2 text-sm">
                         <li class="flex items-center">
                           <input id="alligator-crack" type="checkbox" value="alligator-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="alligator-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Alligator Crack</label>
+                          <label for="alligator-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Alligator Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="arrow" type="checkbox" value="arrow" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="arrow" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Arrow</label>
+                          <label for="arrow" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Arrow</label>
                         </li>
                         <li class="flex items-center">
                           <input id="block-crack" type="checkbox" value="block-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="block-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Block Crack</label>
+                          <label for="block-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Block Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="damaged-base-crack" type="checkbox" value="damaged-base-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="damaged-base-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Damaged Base Crack</label>
+                          <label for="damaged-base-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Damaged Base Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="localise-surface-defect" type="checkbox" value="localise-surface-defect" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="localise-surface-defect" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Localise Surface Defect</label>
+                          <label for="localise-surface-defect" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Localise Surface Defect</label>
                         </li>
                         <li class="flex items-center">
                           <input id="multi-crack" type="checkbox" value="multi-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="multi-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Multi Crack</label>
+                          <label for="multi-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Multi Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="parallel-lines" type="checkbox" value="parallel-lines" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="parallel-lines" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Parallel Lines</label>
+                          <label for="parallel-lines" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Parallel Lines</label>
                         </li>
                         <li class="flex items-center">
                           <input id="peel-off-with-cracks" type="checkbox" value="peel-off-with-cracks" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="peel-off-with-cracks" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Peel Off With Cracks</label>
+                          <label for="peel-off-with-cracks" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Peel Off With Cracks</label>
                         </li>
                         <li class="flex items-center">
                           <input id="peeling-off-premix" type="checkbox" value="peeling-off-premix" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="peeling-off-premix" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Peeling Off Premix</label>
+                          <label for="peeling-off-premix" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Peeling Off Premix</label>
                         </li>
                         <li class="flex items-center">
                           <input id="pothole-with-crack" type="checkbox" value="pothole-with-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="pothole-with-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Pothole With Crack</label>
+                          <label for="pothole-with-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Pothole With Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="rigid-pavement-crack" type="checkbox" value="rigid-pavement-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="rigid-pavement-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Rigid Pavement Crack</label>
+                          <label for="rigid-pavement-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Rigid Pavement Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="single-crack" type="checkbox" value="single-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="single-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Single Crack</label>
+                          <label for="single-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Single Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="transverse-crack" type="checkbox" value="transverse-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="transverse-crack" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Transverse Crack</label>
+                          <label for="transverse-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Transverse Crack</label>
                         </li>
                         <li class="flex items-center">
                           <input id="wearing-course-peeling-off" type="checkbox" value="wearing-course-peeling-off" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="wearing-course-peeling-off" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Wearing Course Peeling Off</label>
+                          <label for="wearing-course-peeling-off" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Wearing Course Peeling Off</label>
                         </li>
                         <li class="flex items-center">
                           <input id="white-lane" type="checkbox" value="white-lane" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="white-lane" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">White Lane</label>
+                          <label for="white-lane" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >White Lane</label>
                         </li>
                         <li class="flex items-center">
                           <input id="yellow-lane" type="checkbox" value="yellow-lane" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="yellow-lane" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Yellow Lane</label>
+                          <label for="yellow-lane" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Yellow Lane</label>
                         </li>
                         <li class="flex items-center">
                           <input id="raveling" type="checkbox" value="raveling" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="raveling" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Raveling</label>
+                          <label for="raveling" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Raveling</label>
                         </li>
                         <li class="flex items-center">
                           <input id="faded-kerb" type="checkbox" value="faded-kerb" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="faded-kerb" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Faded Kerb</label>
+                          <label for="faded-kerb" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Faded Kerb</label>
                         </li>
                         <li class="flex items-center">
                           <input id="paint-spillage" type="checkbox" value="paint-spillage" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="paint-spillage" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">Paint Spillage</label>
+                          <label for="paint-spillage" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Paint Spillage</label>
                         </li>
                       </ul>
                     </div>

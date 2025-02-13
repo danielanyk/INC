@@ -1,4 +1,3 @@
-##
 from flask import Flask, jsonify, request
 from flask_pymongo import PyMongo
 import os
@@ -387,39 +386,45 @@ def rename_croppedImagePath(cropped_image_path, defectID, identifier = None):
         print(e)
         print("Unable to rename cropped image file path")
 
-def make_inferences(db,bid=None, toggle_confidence=False, inspectionDate=None):
+def make_inferences(db,tog,bid=None, toggle_confidence=False, inspectionDate=None):
     predict_url = [
     "http://localhost:5001/predictRaveling",
     "http://localhost:5002/predict17Defects",
     "http://localhost:5003/predictKerb",
     "http://localhost:5004/predictPaint"
     ]
-
+    urls=[]
+    for i in range(len(tog)):
+        if tog[i]==True:
+            urls.append(predict_url[i]) 
+        else:
+            urls.append('')
     try: 
         images = get_list_of_images(db=db)
     except Exception as e:
-        return f'Error: DBMS Exception: {e}', 500
-        
+        return f'Error: DBMS Exception: {e}', 500      
     image_df = pd.DataFrame(images)
-
     if bid==None:
         latest_batch = db.batch.find().sort('batchID', -1).limit(1)
         latest_batch_list = list(latest_batch)
         bid = latest_batch_list[0]['batchID'] + 1 if latest_batch_list else 1
     else:
         db.batch.update_one({"batchID": bid}, {"$set": {"status": "Inferencing"}})
-
     print(image_df['imageID'])
+    print(urls)
     for i in range(len(image_df['imagePath'])):
         frame = image_df['imagePath'][i]
-        for j in range(len(predict_url)):
-            output_lbl, xyxy, confidence, class_id = send_prediction_request(frame, predict_url[j])
+        for j in range(len(urls)):
+            if urls[j]=='':
+                continue
+            print("\n","Printing urls","\n",urls,tog)
+            output_lbl, xyxy, confidence, class_id = send_prediction_request(frame, urls[j])
             if output_lbl==False:
                 continue
             if len(output_lbl) == 0: 
                 continue
-
-            if j != 2: # Do not run severity engine on kerb defects
+            
+            if urls[j]!="http://localhost:5003/predictKerb": # Do not run severity engine on kerb defects
                 severity_predict_url = "http://localhost:5005/predictSeverity"
                 severity_array = [] # Array to store severity labels
                 croppedImage_path_array = [] # Array to store croppedImage_path_array
@@ -680,8 +685,8 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
 
     defect_img = image_path.replace(".jpg", "_defect.jpg")
     imageio.imwrite(defect_img, annotated_frame)
-
-    ## Annotation Using Legends
+    
+    # Annotation Using Legends
     try:
         # Load and convert the image
         image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
@@ -733,43 +738,106 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
     except:
         print('Legend Image Failed to Generate')
 
-    # REPORT SECTION
-    # push to report collection using imageID
-    max_report = db.report.find_one(sort=[("reportID", -1)])
-    next_reportID = max_report["reportID"] + 1 if max_report else 1
-    
-    if not os.path.exists(os.path.abspath("Reports")):
-        os.makedirs("Reports")
-        print("Reports directory created")
-    
-    name = image_path.split("\\")[-1].replace(".jpg", ".pdf")
-    batchfolder = image_path.split("\\")[-2]
-    path = os.path.abspath("Reports")
-    print(path)
-    reportPath = os.path.join(path, batchfolder, name)
-    print(reportPath)
+    try:
+    # Load the original image
+        image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
 
-    if (not db.report.find_one({"imageID": image_id}) and reannotating) or not reannotating:
-        db.report.insert_one(
-            {
-                "reportID": int(next_reportID),
-                "imageID": int(defected_image[0]["imageID"]),
-                "inspectedBy": ConfigData.INSPECTOR_NAME, 
-                "inspectionDate": inspectionDate,
-                "inspectionType": ConfigData.INSPECTION_TYPE,
-                "generationTime": datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S"),
-                "reportPath": reportPath,
-                "tags": "",
-                "quantity": "",
-                "measurement": "",
-                "cause": "",
-                "recommendation": "",
-                "remarks": "",
-                "supervisor": "",
-                "via": "",
-                "acknowledgement": ""
-            }
-        )
+        copy_output_lbl = np.copy(output_lbl)
+        for j in range(len(copy_output_lbl)):
+            if "Faded Kerb" in copy_output_lbl[j]:
+                copy_output_lbl[j] = "Faded Kerb" 
+
+        unique_labels = set(copy_output_lbl)
+        legend = {label: color_map[label] for label in unique_labels}
+
+        # Generate separate images for each defect type
+        for defect_type in unique_labels:
+            # Create a copy of the original image
+            defect_image = image.copy()
+
+            # Annotate only the bounding boxes for the current defect type
+            for i in range(len(detections)):
+                if copy_output_lbl[i] == defect_type:
+                    x1, y1, x2, y2 = map(int, bbox[i])
+                    color = legend[defect_type]
+                    cv2.rectangle(defect_image, (x1, y1), (x2, y2), color, thickness=8)
+
+            # Save the annotated image for the current defect type
+            defect_image_path = image_path.replace(".jpg", f"_{defect_type.replace(' ', '_')}_defect.jpg")
+            cv2.imwrite(defect_image_path, cv2.cvtColor(defect_image, cv2.COLOR_RGB2BGR))
+
+            print(f"Generated defect image for {defect_type}: {defect_image_path}")
+
+            # REPORT SECTION
+            # push to report collection using imageID
+
+            defect_classes = {
+                '1': {"class": "bg-emerald-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Alligator Crack"},
+                '2': {"class": "bg-yellow-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Arrow"},
+                '3': {"class": "bg-green-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Block Crack"},
+                '4': {"class": "bg-blue-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Damaged Base Crack"},
+                '5': {"class": "bg-indigo-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Localise Surface Defect"},
+                '6': {"class": "bg-purple-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Multi Crack"},
+                '7': {"class": "bg-pink-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Parallel Lines"},
+                '8': {"class": "bg-red-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Peel Off With Cracks"},
+                '9': {"class": "bg-emerald-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Peeling Off Premix"},
+                '10': {"class": "bg-green-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Pothole With Crack"},
+                '11': {"class": "bg-blue-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Rigid Pavement Crack"},
+                '12': {"class": "bg-indigo-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Single Crack"},
+                '13': {"class": "bg-purple-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Transverse Crack"},
+                '14': {"class": "bg-pink-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Wearing Course Peeling Off"},
+                '15': {"class": "bg-white text-black text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "White Lane"},
+                '16': {"class": "bg-amber-200 text-black text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Yellow Lane"},
+                '17': {"class": "bg-green-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Raveling"},
+                '18': {"class": "bg-blue-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Faded Kerb"},
+                '19': {"class": "bg-indigo-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Paint Spillage"},
+                    }
+
+
+            for key, value in defect_classes.items():
+                if value["text"] == defect_type:
+                    defectNumber=key
+
+
+            max_report = db.report.find_one(sort=[("reportID", -1)])
+            next_reportID = max_report["reportID"] + 1 if max_report else 1
+            if not os.path.exists(os.path.abspath("Reports")):
+                os.makedirs("Reports")
+                print("Reports directory created")
+            
+            name = defect_image_path.split("\\")[-1].replace("_defect.jpg", ".pdf")
+            batchfolder = image_path.split("\\")[-2]
+            path = os.path.abspath("Reports")
+            print(path)
+            reportPath = os.path.join(path, batchfolder, name)
+            print(reportPath)
+
+            # if (not db.report.find_one({"imageID": image_id}) and reannotating) or not reannotating:
+            db.report.insert_one(
+                {
+                    "reportID": int(next_reportID),
+                    "imageID": int(defected_image[0]["imageID"]),
+                    "inspectedBy": ConfigData.INSPECTOR_NAME, 
+                    "inspectionDate": inspectionDate,
+                    "inspectionType": ConfigData.INSPECTION_TYPE,
+                    "generationTime": datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S"),
+                    "reportPath": reportPath,
+                    "defectNumber":defectNumber,
+                    "tags": "",
+                    "quantity": "",
+                    "measurement": "",
+                    "cause": "",
+                    "recommendation": "",
+                    "remarks": "",
+                    "supervisor": "",
+                    "via": "",
+                    "acknowledgement": ""
+                }
+            )
+            print(f"Entered MongoDB for {defect_type}: {defect_image_path}")
+    except Exception as e:
+        print(f"An error occurred while generating separate defect images: {e}")
+
 
 
     ## Generate Report PDF 
@@ -827,7 +895,7 @@ defect_classes = {
 }
 
 
-def pipeline(db, inspectionDate, path, user_id = 1, lat = None, lon = None, totalframes = 300, toggle_confidence=False, bid=None):
+def pipeline(db, inspectionDate, path,tog, user_id = 1, lat = None, lon = None, totalframes = 300, toggle_confidence=False, bid=None):
     print("Starting Pipeline")
     print(user_id, lat, lon, totalframes, path, toggle_confidence)
     # Creates batch in database, with relevant details
@@ -853,7 +921,7 @@ def pipeline(db, inspectionDate, path, user_id = 1, lat = None, lon = None, tota
         return "Error Processing Video"
     
     # Inferences frames through all enabled AI engines.
-    make_inferences(db,bid=bid, inspectionDate=inspectionDate, toggle_confidence=False)
+    make_inferences(db,tog,bid=bid, inspectionDate=inspectionDate, toggle_confidence=False)
     print("Succesfully made inferences")
     
     if bid is not None:

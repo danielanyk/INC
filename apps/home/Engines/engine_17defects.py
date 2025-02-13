@@ -159,4 +159,4 @@ def weightedboxfusion(ls, conf_ls, class_ls, weights, w, h):
 if __name__ == "__main__":
     print("hi")
     app.run(debug=True, port=5002)
-    # load_model()
+    load_model()

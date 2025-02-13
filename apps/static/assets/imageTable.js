@@ -34,41 +34,59 @@
     }
 
 
-function handleConfirmClick() {
-  const insp_date = document.getElementById('insp_date').value;
-  if (insp_date === '') {
-    const today = new Date();
-  
-    const day = today.getDate();
-    const month = today.getMonth() + 1; // January is 0
-    const year = today.getFullYear();
+    function checktoggle(id){
+      const toggle = document.getElementById(id);
     
-    document.getElementById('insp_date').value = `${day}/${month}/${year}`;
-  }
-  
-  var inspectionDate = document.getElementById('insp_date').value
-  fetch('/start_process', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        // Add any data you need to send in the body here
-        total_frames: totalF,
-        path: Fpath,
-        user_id: '1',
-        bid: bID,
-        inspectionDate: inspectionDate
-    })
-  })
-  .then(response => {
-      if (!response.ok) {
-          throw  new Error('Network response was not ok');
+        // Check if it's checked or not
+        if (toggle.checked) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    function handleConfirmClick() {
+      const insp_date = document.getElementById('insp_date').value;
+      if (insp_date === '') {
+        const today = new Date();
+      
+        const day = today.getDate();
+        const month = today.getMonth() + 1; // January is 0
+        const year = today.getFullYear();
+        
+        document.getElementById('insp_date').value = `${day}/${month}/${year}`;
       }
-      return response.json();
-  
-});
-
+      
+      tog1=checktoggle("toggle1");
+      tog2=checktoggle("toggle2");
+      tog3=checktoggle("toggle3");
+      tog4=checktoggle("toggle4");
+      //add toggle 5 and 6 here
+      tog=[tog1,tog2,tog3,tog4];
+    
+      var inspectionDate = document.getElementById('insp_date').value
+      fetch('/start_process', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            // Add any data you need to send in the body here
+            total_frames: totalF,
+            path: Fpath,
+            user_id: '1',
+            bid: bID,
+            inspectionDate: inspectionDate,
+            toggle:tog
+        })
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw  new Error('Network response was not ok');
+          }
+          return response.json();
+      
+    });
 
 }
 
@@ -79,65 +97,145 @@ function handleClearAll() {
 let selectedPath = "";  // Global variable to store the selected path filter
 let selectedDefects = [];  // Global variable to store the selected defects filter
 
+// function renderTableRows(filteredData) {
+//   const tbody = document.querySelector('.imagetbody');
+//   tbody.innerHTML = ''; // clear the table body
+//   filteredData.sort((a, b) => a.imagePath.localeCompare(b.imagePath));
+//   let rows = '';
+
+//   filteredData.forEach((item, index) => {
+//     const rowClass = (index + 1) % 2 === 0 ? 'bg-gray-50 dark:bg-gray-700' : '';
+//     const defects = item.outputID.map((defect, index) => {
+//       const defectKey = defect;
+//       const defectClass = defectClasses[defectKey];
+//       const severity = item.severity[index];
+//       let concatBorder = '';
+//       if (severity == 1) {
+//         concatBorder = 'border-4 border-amber-400';
+//       } else if (severity == 2) {
+//         concatBorder = 'border-4 border-orange-500';
+//       } else if (severity == 3) {
+//         concatBorder = 'border-4 border-red-600';
+//       }
+//       if (!defectClass) {
+//         console.error(`Defect not found: ${defectKey}`);
+//         return `<span class="border-2 border-purple-600 bg-pink-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md">Unknown Defect</span>`;
+//       }
+//       return `<span class="${concatBorder} ${defectClass.class}">${defectClass.text}</span>`;
+//     }).join(' ');
+
+//     let b = '\\' + item.imagePath.split('\\').slice(item.imagePath.split('\\').indexOf('Batches')).join('\\');
+//     b = b.replace(/(\.[\w\d_-]+)$/i, '_legend_defect$1');
+
+//     const btnHTML = `<button id="report-${item.imageID}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">
+//       View Report <svg class="w-4 h-4 ml-1 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+//     </button>`;
+
+//     const row = `
+//       <tr class="${rowClass}">
+//         <td class="p-4 text-sm font-normal text-gray-900 whitespace-nowrap dark:text-white">${item.imagePath}</td>
+//         <td class="p-4 text-sm font-semibold text-gray-900 whitespace-nowrap dark:text-white">${item.location}</td>
+//         <td class="p-4 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">${defects}</td>
+//         <td class="inline-flex items-center p-4 space-x-2 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">
+//           <a id="view-${item.imageID}" href="${b}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">View</a>
+//         </td>
+//         <td class="p-4 whitespace-nowrap">
+//           ${btnHTML}
+//         </td>
+//       </tr>
+//     `;
+
+//     rows += row;
+//   });
+
+//   tbody.innerHTML = rows;
+
+//   // Reapply click events for buttons
+//   filteredData.forEach((item) => {
+//     document.getElementById(`report-${item.imageID}`).addEventListener('click', function(event) {
+//       viewReport(event, item.imageID);
+//     });
+//   });
+// }
+
 function renderTableRows(filteredData) {
   const tbody = document.querySelector('.imagetbody');
-  tbody.innerHTML = ''; // clear the table body
+  tbody.innerHTML = ''; // Clear the table body
   filteredData.sort((a, b) => a.imagePath.localeCompare(b.imagePath));
+
   let rows = '';
 
   filteredData.forEach((item, index) => {
     const rowClass = (index + 1) % 2 === 0 ? 'bg-gray-50 dark:bg-gray-700' : '';
-    const defects = item.outputID.map((defect, index) => {
-      const defectKey = defect;
-      const defectClass = defectClasses[defectKey];
-      const severity = item.severity[index];
-      let concatBorder = '';
-      if (severity == 1) {
-        concatBorder = 'border-4 border-amber-400';
-      } else if (severity == 2) {
-        concatBorder = 'border-4 border-orange-500';
-      } else if (severity == 3) {
-        concatBorder = 'border-4 border-red-600';
+
+    // Group defects by type
+    const defectGroups = {};
+    item.outputID.forEach((defect, dIndex) => {
+      const defectType = defect; // Output label (defect type)
+      const severity = item.severity[dIndex];
+
+      if (!defectGroups[defectType]) {
+        defectGroups[defectType] = { severity: [], count: 0 };
       }
-      if (!defectClass) {
-        console.error(`Defect not found: ${defectKey}`);
-        return `<span class="border-2 border-purple-600 bg-pink-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md">Unknown Defect</span>`;
+
+      defectGroups[defectType].severity.push(severity);
+      defectGroups[defectType].count++;
+    });
+
+    // Create a row for each unique defect type
+    Object.entries(defectGroups).forEach(([defectType, data], dIndex) => {
+      const defectClass = defectClasses[defectType] || { class: "border-purple-600 bg-pink-600 text-white", text: "Unknown Defect" };
+      let severityBorder = '';
+
+      if (data.severity.includes(3)) {
+        severityBorder = 'border-4 border-red-600';
+      } else if (data.severity.includes(2)) {
+        severityBorder = 'border-4 border-orange-500';
+      } else if (data.severity.includes(1)) {
+        severityBorder = 'border-4 border-amber-400';
       }
-      return `<span class="${concatBorder} ${defectClass.class}">${defectClass.text}</span>`;
-    }).join(' ');
 
-    let b = '\\' + item.imagePath.split('\\').slice(item.imagePath.split('\\').indexOf('Batches')).join('\\');
-    b = b.replace(/(\.[\w\d_-]+)$/i, '_legend_defect$1');
+      const defectsHTML = `<span class="${severityBorder} ${defectClass.class}">${defectClass.text} (x${data.count})</span>`;
+      const sanitizedDefect = defectClass.text.replace(/\s+/g, "-"); // Replace spaces with hyphens
+      let b = '\\' + item.imagePath.split('\\').slice(item.imagePath.split('\\').indexOf('Batches')).join('\\');
+      b = b.replace(/(\.[\w\d_-]+)$/i, '_legend_defect$1');
 
-    const btnHTML = `<button id="report-${item.imageID}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">
-      View Report <svg class="w-4 h-4 ml-1 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-    </button>`;
+      const btnID = `report-${item.imageID}-${sanitizedDefect}`;
 
-    const row = `
-      <tr class="${rowClass}">
-        <td class="p-4 text-sm font-normal text-gray-900 whitespace-nowrap dark:text-white">${item.imagePath}</td>
-        <td class="p-4 text-sm font-semibold text-gray-900 whitespace-nowrap dark:text-white">${item.location}</td>
-        <td class="p-4 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">${defects}</td>
-        <td class="inline-flex items-center p-4 space-x-2 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">
-          <a id="view-${item.imageID}" href="${b}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">View</a>
-        </td>
-        <td class="p-4 whitespace-nowrap">
-          ${btnHTML}
-        </td>
-      </tr>
-    `;
+      const btnHTML = `<button id="${btnID}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">
+        View Report
+        <svg class="w-4 h-4 ml-1 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </button>`;
 
-    rows += row;
+      const row = `
+        <tr class="${rowClass}">
+          <td class="p-4 text-sm font-normal text-gray-900 whitespace-nowrap dark:text-white">${item.imagePath}</td>
+          <td class="p-4 text-sm font-semibold text-gray-900 whitespace-nowrap dark:text-white">${item.location}</td>
+          <td class="p-4 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">${defectsHTML}</td>
+          <td class="inline-flex items-center p-4 space-x-2 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">
+            <a id="view-${item.imageID}" href="${b}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">View</a>
+          </td>
+          <td class="p-4 whitespace-nowrap">
+            ${btnHTML}
+          </td>
+        </tr>
+      `;
+
+      rows += row;
+
+      // Attach event listener directly within the loop
+      setTimeout(() => {
+        document.getElementById(btnID)?.addEventListener('click', function (event) {
+          console.log(defectType)
+          viewReport(event, item.imageID, defectType); // Pass defectType as the identifier
+        });
+      }, 0);
+    });
   });
 
   tbody.innerHTML = rows;
-
-  // Reapply click events for buttons
-  filteredData.forEach((item) => {
-    document.getElementById(`report-${item.imageID}`).addEventListener('click', function(event) {
-      viewReport(event, item.imageID);
-    });
-  });
 }
 
 function filterTableByImagePath(data, selectedPath) {
@@ -240,9 +338,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-function viewReport(event, imageID) {
+function viewReport(event, imageID, defect) {
 
-fetch(`/get_reportPath/${imageID}`)
+fetch(`/get_reportPath/${imageID}/${defect}`)
   .then(response => response.json())
   .then(data => {
     console.log('Report data:', data);

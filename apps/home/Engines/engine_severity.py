@@ -216,7 +216,8 @@ def get_batch_status(db):
     
 def batchCompletionMonitoringHook():
 
-    classified_dir = r".\active_learning\classified\train"
+    # classified_dir = r".\active_learning\classified\train"
+    classified_dir = r".\active_learning\classified"
 
      # Paths to the subfolders
     subfolders = ['s1', 's2', 's3']
@@ -231,6 +232,8 @@ def batchCompletionMonitoringHook():
             return # Exits the function if either of the subfolders have less than 200 images
     
     # Check the status of the last processed batch
+    print("reached db")
+    print(db)
     batch_info = get_batch_status(db)  
     status = batch_info.get('status')
 

@@ -16,7 +16,7 @@ import zipfile
 from flask_login import login_required
 from jinja2 import TemplateNotFound
 from apps.home.forms import ProductForm
-from apps.home.models import Product, TaskResult, User
+from apps.home.models import Product, TaskResult, User, VideoProcessor
 from celery.result import AsyncResult
 from apps import mongo
 from celery import current_app
@@ -262,10 +262,12 @@ def process():
         db,
         inspectionDate=data["inspectionDate"],
         path=os.path.join(ConfigData.VIDEO_LOCATION, file_path),
+        tog=data['toggle'],
         lon=None,
         lat=None,
         totalframes=total_frames,
-        bid=bid,
+        bid=bid
+        
     )
 
     return jsonify({"status": "success"})
@@ -498,10 +500,12 @@ def get_reports_route():
     reports = get_reports(tags)
     return jsonify(reports)
 
-@blueprint.route("/get_reportPath/<imageID>", methods=["GET"])
-def get_reportPath(imageID):
+@blueprint.route("/get_reportPath/<imageID>/<defect>", methods=["GET"])
+def get_reportPath(imageID,defect):
     imageID = int(imageID)
-    report = db.report.find_one({"imageID": imageID})
+    print(defect)
+    # print(index)
+    report = db.report.find_one({"imageID": imageID,"defectNumber":defect})
     if report:
         print(report["reportPath"])
         return jsonify({"reportPath": report["reportPath"]})
@@ -511,6 +515,7 @@ def get_reportPath(imageID):
 @blueprint.route("/view_temp", methods=["POST"])
 def view_temp():
     data = request.json
+    print(data)
     view_report(data["path"])
     return jsonify("success")
 
@@ -664,7 +669,7 @@ def download():
 
 @blueprint.route("/shutdown", methods=["POST"])
 def shutdown():
-    subprocess.run("cmd.exe /k ./apps/home/engines/shutdown.bat", shell=True)
+    subprocess.run("cmd.exe /k ./apps/home/Engines/shutdown.bat", shell=True)
 
 # END OF REPORT ROUTES
 
@@ -703,9 +708,9 @@ def summarize():
             return jsonify({"error": "Summarizer service returned an error", "status_code": response.status_code}), response.status_code
         
     except Exception as e:
-        # Log the error
-        print(f"There's an issue with the summarizer: {e}")
-        return jsonify({"error": "There's an issue with the summarizer"}), 500
+        # # Log the error
+        # print(f"There's an issue with the summarizer: {e}")
+        return jsonify({"error": "There's an issue with the summarizer","content":input_data}), 500
 
 
 # END OF SUMMARIZATION ROUTES
@@ -1176,5 +1181,188 @@ def load_more_filtered_images():
     endDate = data.get("endDate")
     defectList = data.get("defectList")
     return get_filtered_results(startDate, endDate, defectList, startindex, endindex)
+
+
+@blueprint.route("/black", methods=["GET"])
+def black():
+    # return render_template(r"C:\Users\DanielYeoh\Desktop\INC-TSM-Phase3\black\templates\upload.html")
+    # os.startfile(r"C:\Users\DanielYeoh\Desktop\INC-TSM-Phase3\black\app.py")
+    return render_template("pages/b_result.html")
 # END OF ANNOTATOR ROUTES
 #####################################################################################################################################
+# Team Black
+from flask import (
+    request,
+    render_template,
+    redirect,
+    url_for,
+    send_from_directory,
+)
+from werkzeug.utils import secure_filename
+import os
+import cv2
+import numpy as np
+import uuid
+
+def load_processed_videos():
+        with open(Config.BLACK_PROCESSED_VIDEOS, "r") as file:
+            return json.load(file)
+
+
+
+def save_processed_videos(data):
+    with open(Config.BLACK_PROCESSED_VIDEOS, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+
+# @blueprint.route('/team_black_home', methods=['GET'])
+# def team_black_home():
+#     return render_template("pages/upload.html")
+
+@blueprint.route('/team_black_home', methods=['GET'])
+def team_black_home():
+    processed_videos = load_processed_videos()
+    print(len(processed_videos))
+    processed_videos.reverse()  # Ensure latest uploads appear first
+    return render_template("pages/upload.html", processed_videos=processed_videos)
+
+
+# @blueprint.route('/team_black_upload', methods=['POST'])
+# def team_black_upload():
+#     if "file" not in request.files:
+#         return redirect(url_for('blueprint.team_black_home'))
+#     file = request.files["file"]
+#     if file.filename == "":
+#         return redirect(url_for('blueprint.team_black_home'))
+#     if file:
+#         unique_folder = str(uuid.uuid4())
+#         output_dir = os.path.join(Config.BLACK_OUTPUT_FOLDER, unique_folder)
+#         os.makedirs(output_dir, exist_ok=True)
+
+#         filename = secure_filename(file.filename)
+#         file_path = os.path.join(Config.BLACK_UPLOAD_FOLDER, filename)
+#         file.save(file_path)
+
+#         output_path = os.path.join(output_dir, f"output_{filename}")
+#         tracker_path = Config.BLACK_TRACKER_WEIGHTS_FILE
+#         processor = VideoProcessor(
+#             seg_model_path=Config.BLACK_MARKING_MODEL_WEIGHTS_FILE,
+#             det_model_path=Config.BLACK_SIGN_MODEL_WEIGHTS_FILE,
+#         )
+#         missing_signs = processor.process_video(
+#             file_path, output_path, tracker_path
+#         )
+
+#         return render_template(
+#             "pages/result.html",
+#             output_video=f"{unique_folder}/output_{filename}",
+#             missing_signs=missing_signs,
+#             missing_count=len(missing_signs),
+#         )
+
+# @blueprint.route("static/outputs/<path:unique_folder>/<path:filename>")
+# def serve_output(unique_folder, filename):
+#     output_folder = os.path.join(Config.BLACK_OUTPUT_FOLDER, unique_folder)
+#     return send_from_directory(
+#         output_folder, filename, mimetype="video/mp4", conditional=True
+#     )
+
+# @app.route("/", methods=["GET", "POST"])
+@blueprint.route("/team_black_upload", methods=["POST"])
+def upload_video():
+    if request.method == "POST":
+        if "file" not in request.files:
+            return redirect(request.url)
+
+        file = request.files["file"]
+        if file.filename == "":
+            return redirect(request.url)
+
+        if file:
+            folder = str(uuid.uuid4())
+
+            output_dir = os.path.join(Config.BLACK_OUTPUT_FOLDER, folder)
+            os.makedirs(output_dir, exist_ok=True)
+
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(Config.BLACK_UPLOAD_FOLDER, filename)
+            file.save(file_path)
+
+            output_path = os.path.join(output_dir, f"output_{filename}")
+            tracker_path = Config.BLACK_TRACKER_WEIGHTS_FILE
+            marking_model_path = Config.BLACK_MARKING_MODEL_WEIGHTS_FILE
+            sign_model_path = Config.BLACK_SIGN_MODEL_WEIGHTS_FILE
+
+            processor = VideoProcessor(marking_model_path, sign_model_path)
+
+            processor.process_video(file_path, output_path, tracker_path)
+
+            missing_signs = processor.detect_missing_signs(output_path)
+
+            missing_signs_data = {
+                "number_of_missing_signs": len(missing_signs),
+                "missing_signs_details": missing_signs,
+            }
+
+            json_path = os.path.join(output_dir, "missing_signs.json")
+            with open(json_path, "w") as json_file:
+                json.dump(missing_signs_data, json_file, indent=4)
+
+            thumbnail_path = os.path.join(
+                Config.BLACK_THUMBNAIL_FOLDER, f"{folder}.jpg"
+            )
+            processor.generate_thumbnail(file_path, thumbnail_path)
+
+            processed_videos = load_processed_videos()
+
+            processed_videos.append(
+                {
+                    "id": folder,
+                    "filename": filename,
+                    "output_path": output_path,
+                    "thumbnail_url": os.path.join(Config.BLACK_THUMBNAIL_FOLDER, f"{folder}.jpg"),
+                    "number_of_missing_signs": len(missing_signs),
+                }
+            )
+
+            save_processed_videos(processed_videos)
+            return redirect(url_for("home_blueprint.team_black_home"))
+
+
+
+    # processed_videos = load_processed_videos()
+    # processed_videos.reverse()
+    # return render_template("pages/upload.html", processed_videos=processed_videos)
+
+# @app.route("/result/<video_id>")
+@blueprint.route("/team_black_result/<video_id>")
+def result(video_id):
+    processed_videos = load_processed_videos()
+
+    video_data = next(
+        (video for video in processed_videos if video["id"] == video_id), None
+    )
+    if not video_data:
+        return "Video not found", 404
+
+    json_path = os.path.join(
+        Config.BLACK_OUTPUT_FOLDER, video_id, "missing_signs.json"
+    )
+    if not os.path.exists(json_path):
+        return "Missing signs data not found", 404
+
+    with open(json_path, "r") as json_file:
+        missing_signs_data = json.load(json_file)
+
+    for sign in missing_signs_data["missing_signs_details"]:
+        sign["frame_path"] = url_for(
+            "static",
+            filename=f"outputs/{video_id}/marking_{sign['lane_marking_id']}_frame.jpg",
+        )
+
+    return render_template(
+        "pages/result.html",
+        video_data=video_data,
+        missing_signs_data=missing_signs_data,
+    )

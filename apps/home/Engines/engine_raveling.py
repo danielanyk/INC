@@ -89,7 +89,13 @@ def shutdown():
     func()
     return 'Server shutting down...'
 
-if __name__ == "__main__":    
+if __name__ == "__main__":   
+    config_file = "apps/home/Engines/configs/swin-warm-restart-final-raveling.py"
+    checkpoint = "apps/home/Engines/epoch/epoch_24.pth"
+    model = da.init_detector(
+        config_file,
+        checkpoint=checkpoint,
+        device="cuda:0" if torch.cuda.is_available() else "cpu",
+    )
     app.run(debug=True, port=5001)
-    # load_model()
     

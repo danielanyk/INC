@@ -5,6 +5,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from urllib.parse import unquote
 import logging
+
 client = MongoClient("mongodb://localhost:27017/FYP")
 db = client["FYP"]
 class Users(UserMixin):
@@ -35,17 +36,20 @@ class Users(UserMixin):
             logging.error(f"Failed to save user {self.username}: {e}")
             raise
 
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
     
     #! New Change
+    @classmethod
     def get_user_perm(self):
         if not self.username:
             return None  # If the username isn't set, return None
         user_data = db.users.find_one({'username': self.username}, {'perm': 1})  # Only fetch 'perm' field
         return user_data.get('perm') if user_data else None
+
 
     @classmethod
     def get_by_username(cls, username):

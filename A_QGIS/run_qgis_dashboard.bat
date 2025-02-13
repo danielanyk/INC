@@ -5,7 +5,7 @@
 SET "CURRENT_DIR=%CD%"
 
 @REM !!!!!!!!!!! Set path to QGIS installation (Change accordingly, version yad has is Long Term Release(LTR))
-SET "QGIS_PATH=C:\Program Files\QGIS 3.38.2\bin"
+SET "QGIS_PATH=C:\Program Files\QGIS 3.38.1\bin"
 @REM SET "QGIS_PATH=%CURRENT_DIR%\..\QGIS\bin"
 
 @REM Dynamically set Path to QGIS project file 

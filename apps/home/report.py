@@ -721,16 +721,32 @@ def separate_pavement_issues(defects):
     return all_categories
 
 
-def map_types_to_bboxes(types, bboxes):
-    if len(types) != len(bboxes):
-        raise ValueError("The number of types and bounding boxes must be the same.")
+def map_types_to_bboxes(defect_types, bboxes):
+    """
+    Maps defect types to their corresponding bounding boxes.
+    Ensures grouped defect types (like 'Faded Kerb (1M)' and 'Faded Kerb (2M)') share a combined bounding box.
+    """
+    defect_mapping = {}
 
-    mapping = {type_: bbox for type_, bbox in zip(types, bboxes)}
-    return mapping
+    for defect, bbox in zip(defect_types, bboxes):
+        normalized_defect = defect.split(" (")[0].title()  # Remove size (e.g., "(1M)")
+        
+        if normalized_defect in defect_mapping:
+            # Merge bounding boxes by taking min/max coordinates
+            existing_bbox = defect_mapping[normalized_defect]
+            x_min = min(existing_bbox[0], bbox[0])
+            y_min = min(existing_bbox[1], bbox[1])
+            x_max = max(existing_bbox[2], bbox[2])
+            y_max = max(existing_bbox[3], bbox[3])
+            defect_mapping[normalized_defect] = [x_min, y_min, x_max, y_max]
+        else:
+            defect_mapping[normalized_defect] = bbox
+
+    return defect_mapping
 
 
 def template1(c, view_report):
-
+    defect_name = view_report['defect_type'].replace(" ", "_")
     print(view_report)
     for repeat in view_report["type"]:
         if repeated_defects(repeat, view_report["road"]) == "Yes":
@@ -833,7 +849,7 @@ def template1(c, view_report):
         c, "Location / Landmark:", view_report["road"].title(), height - 190, height
     )
     draw_metadata_section(c, "Type of Asset:", str(categories), height - 220, height)
-    draw_metadata_section(c, "Description:", issues.title(), height - 250, height)
+    draw_metadata_section(c, "Description:", view_report["defect_type"], height - 250, height)
     draw_metadata_section(c, "Quantity:", view_report["quantity"], height - 280, height)
     draw_metadata_section(
         c, "Measurement:", view_report["measurement"], height - 310, height
@@ -936,7 +952,7 @@ def template1(c, view_report):
 
     try:
         c.drawImage(
-            view_report["image"].replace("_defect", "_legend_defect"),
+            view_report["image"].replace("_defect", "_"+defect_name+"_defect"),
             41,
             height - 730,
             width=width - 82,
@@ -959,7 +975,7 @@ def template1(c, view_report):
     # Draw the annotated image
     try:
         c.drawImage(
-            view_report["image"].replace("_defect", "_legend_defect"),
+            view_report["image"].replace("_defect", "_"+defect_name+"_defect"),
             41,
             height - 211,
             width=width / 2 - 42,
@@ -988,9 +1004,9 @@ def template1(c, view_report):
 
     # Draw the cropped image
     try:
-        img = Image.open(view_report["image"].replace("_defect", ""))
+        img = Image.open(view_report["image"].replace("_defect", "_"+defect_name+"_defect"))
         bboxes_set = []
-        for bbox_str in view_report["bbox"]:
+        for bbox_str in view_report["filtered_bbox"]:
             # Remove extra characters and split into numbers
             numbers = bbox_str.replace("[", "").replace("]", "").split(",")
             # Convert each number to float and then to int
@@ -1001,10 +1017,10 @@ def template1(c, view_report):
         height_cropped = height - 369
 
         # if more than 6 defects found, display only the first 6 unique defects
-        if len(view_report["type"]) > ConfigData.NO_OF_DEFECTS_SHOWN:
+        if len(view_report["defect_type"]) > ConfigData.NO_OF_DEFECTS_SHOWN:
             print(f"More than {ConfigData.NO_OF_DEFECTS_SHOWN} defects found")
             print("Displaying only the first 6 unique defects")
-            type_bbox_mapping = map_types_to_bboxes(view_report["type"], bboxes_set)
+            type_bbox_mapping = map_types_to_bboxes(view_report["defect_type"], bboxes_set)
             print(type_bbox_mapping)
             for i, (defect_type, bbox) in enumerate(type_bbox_mapping.items()):
                 x_min, y_min, x_max, y_max = bbox
@@ -1031,7 +1047,7 @@ def template1(c, view_report):
                     height=156,
                 )
 
-                c.drawString(x_pos + 1, height_cropped - 11, "Defect: " + defect_type)
+                # c.drawString(x_pos + 1, height_cropped - 11, "Defect: " + defect_type)
                 c.line(40, height_cropped - 14, 40, height - 317)
                 c.line(572, height_cropped - 14, 572, height - 317)
                 c.line(width / 2, height_cropped - 14, width / 2, height - 317)
@@ -1070,9 +1086,9 @@ def template1(c, view_report):
                     height=156,
                 )
 
-                c.drawString(
-                    x_pos + 1, height_cropped - 11, "Defect: " + view_report["type"][i]
-                )
+                # c.drawString(
+                #     x_pos + 1, height_cropped - 11, "Defect: " + view_report["type"][i]
+                # )
                 c.line(40, height_cropped - 14, 40, height - 317)
                 c.line(572, height_cropped - 14, 572, height - 317)
                 c.line(width / 2, height_cropped - 14, width / 2, height - 317)
@@ -1103,62 +1119,122 @@ def view_report(temp_file):
     # os.remove(temp_file)
 
 
+# def generate_report(report_data, template, placeholder):
+#     """
+#     Generates a PDF report based on the given report data and template,
+#     and saves it to the specified filename.
+#     """
+
+#     report_data["type"] = [item.title() for item in report_data["type"]]
+#     name = report_data["name"] + ".pdf"
+
+#     if placeholder == "temp":
+#         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
+#             c = canvas.Canvas(temp_file, pagesize=letter)
+#             if template == "2":
+#                 c = template2(c, report_data)
+#             elif template == "3":
+#                 c = template3(c, report_data)
+#             else:
+#                 c = template1(c, report_data)
+#             c.save()
+
+#         print("Report generated")
+#         print(temp_file.name)
+
+#         return temp_file.name
+
+#     elif placeholder == "download":
+#         if not os.path.exists(os.path.abspath("Reports")):
+#             os.makedirs("Reports")
+#             print("Reports directory created")
+
+#         path = os.path.abspath("Reports")
+#         batchname = report_data["image"].split("\\")[-2]
+#         batchfolder = os.path.join(path, batchname)
+
+#         if not os.path.exists(batchfolder):
+#             os.makedirs(batchfolder)
+#             print("Batch directory created")
+
+#         batchfolder = os.path.join(batchfolder, name)
+#         print(batchfolder)
+
+#         with open(batchfolder, "wb") as pdf_file:
+#             c = canvas.Canvas(pdf_file, pagesize=letter)
+#             if template == "2":
+#                 c = template2(c, report_data)
+#             elif template == "3":
+#                 c = template3(c, report_data)
+#             else:
+#                 c = template1(c, report_data)
+#             c.save()
+
+#         print("Report generated")
+#         print(f"PDF saved to: {batchfolder}")
+
+#         return batchfolder
 def generate_report(report_data, template, placeholder):
     """
-    Generates a PDF report based on the given report data and template,
-    and saves it to the specified filename.
+    Generates separate PDF reports for each defect type in the report data
+    and saves them to the specified filenames.
     """
-
-    report_data["type"] = [item.title() for item in report_data["type"]]
-    name = report_data["name"] + ".pdf"
-
-    if placeholder == "temp":
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-            c = canvas.Canvas(temp_file, pagesize=letter)
-            if template == "2":
-                c = template2(c, report_data)
-            elif template == "3":
-                c = template3(c, report_data)
-            else:
-                c = template1(c, report_data)
-            c.save()
-
-        print("Report generated")
-        print(temp_file.name)
-
-        return temp_file.name
-
-    elif placeholder == "download":
+    # Capitalize defect types
+    report_data["type"] = [item.split(" (")[0].title() for item in report_data["type"]]
+    
+    # Get unique defect types
+    unique_types = set(report_data["type"])
+    
+    # Report directory setup
+    if placeholder == "download":
         if not os.path.exists(os.path.abspath("Reports")):
             os.makedirs("Reports")
             print("Reports directory created")
-
+        
         path = os.path.abspath("Reports")
         batchname = report_data["image"].split("\\")[-2]
         batchfolder = os.path.join(path, batchname)
-
+        
         if not os.path.exists(batchfolder):
             os.makedirs(batchfolder)
             print("Batch directory created")
+    else:
+        batchfolder = tempfile.gettempdir()
 
-        batchfolder = os.path.join(batchfolder, name)
-        print(batchfolder)
+    generated_reports = []  # List to store the paths of generated reports
 
-        with open(batchfolder, "wb") as pdf_file:
+    # Generate a report for each defect type
+    for defect_type in unique_types:
+        # Filter data for the current defect type
+        indices = [i for i, d in enumerate(report_data["type"]) if d == defect_type]
+        filtered_bbox = [report_data["bbox"][i] for i in indices]
+        
+        defect_specific_data = {
+            **report_data,
+            "defect_type": defect_type,
+            "filtered_bbox": filtered_bbox,
+        }
+
+        # Set report name
+        defect_name = defect_type.replace(" ", "_")
+        report_name = f"{report_data['name']}_{defect_name}.pdf"
+        report_path = os.path.join(batchfolder, report_name)
+
+        # Create the PDF
+        with open(report_path, "wb") as pdf_file:
             c = canvas.Canvas(pdf_file, pagesize=letter)
             if template == "2":
-                c = template2(c, report_data)
+                c = template2(c, defect_specific_data)
             elif template == "3":
-                c = template3(c, report_data)
+                c = template3(c, defect_specific_data)
             else:
-                c = template1(c, report_data)
+                c = template1(c, defect_specific_data)
             c.save()
 
-        print("Report generated")
-        print(f"PDF saved to: {batchfolder}")
+        print(f"Report generated for {defect_type}: {report_path}")
+        generated_reports.append(report_path)
 
-        return batchfolder
-
+    return generated_reports  # Return the list of generated report paths
 
 def add_new_tags(report_id, tags):
     """

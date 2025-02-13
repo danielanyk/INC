@@ -123,13 +123,15 @@
               </h6>
               <ul class="space-y-2 text-sm" aria-labelledby="dropdownDefault">
                 <li class="flex items-center">
-                  <select id="batch" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" style="color: white;">
-                    <option disabled selected value="" style="color: white;">Batches</option>
+                  <select id="batch" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+                    <option disabled selected value="" class="text-gray-900 dark:text-white">Batches</option>
                     {% for batch in batches %}
-                      <option value="{{ batch }}" style="color: white;" 
-                              {% if batch == batches|last %}selected{% endif %}>
-                        {{ batch }}
-                      </option>
+                    {% if batch %}
+                    <option value="{{ batch }}" class="text-gray-900 dark:text-white" 
+                            {% if batch == batches|last %}selected{% endif %}>
+                      {{ batch }}
+                    </option>
+                  {% endif %}
                     {% endfor %}
                   </select>
                 </li>
@@ -145,12 +147,12 @@
                       </svg>
                     </button>
                     <div id="dropdown2" class="z-10 hidden w-30 p-3 bg-white rounded-lg shadow dark:bg-gray-700 flex flex-col items-center">
-                      <h6 class="mb-3 text-sm font-medium text-gray-900" style="color: white;">Filter by</h6>
+                      <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">Filter by</h6>
                       <ul class="space-y-2 text-sm">
                         {% for defect in defects %}
                         <li class="flex items-center">
                           <input id="{{ defect }}" type="checkbox" value="{{ defect }}" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
-                          <label for="{{ defect }}" class="ml-2 text-sm font-medium text-gray-900" style="color: white;">{{ defect }}</label>
+                          <label for="{{ defect }}" class="ml-2 text-sm font-medium text-gray-900 dark:text-white">{{ defect }}</label>
                         </li>
                         {% endfor %}
                       </ul>
@@ -158,28 +160,28 @@
                 </li>
 
                 <li class="flex items-center">
-                  <select id="severity" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" style="color: white;">
-                    <option disabled selected value="" style="color: white;">Severity</option>
-                    <option value="1" style="color: white;">Low</option>
-                    <option value="2" style="color: white;">Medium</option>
-                    <option value="3" style="color: white;">High</option>
+                  <select id="severity" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+                    <option disabled selected value="" class="text-gray-900 dark:text-white">Severity</option>
+                    <option value="1" class="text-gray-900 dark:text-white">Low</option>
+                    <option value="2" class="text-gray-900 dark:text-white">Medium</option>
+                    <option value="3" class="text-gray-900 dark:text-white">High</option>
                   </select>
                 </li>
 
                 <li class="flex items-center">
-                  <select id="town" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" style="color: white;">
-                    <option disabled selected value="" style="color: white;">Town</option>
+                  <select id="town" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" >
+                    <option disabled selected value="" class="text-gray-900 dark:text-white">Town</option>
                     {% for town in town_tags %}
-                    <option value="{{ town }}" style="color: white;">{{ town }}</option>
+                    <option value="{{ town }}" class="text-gray-900 dark:text-white">{{ town }}</option>
                     {% endfor %}
                   </select>
                 </li>
 
                 <li class="flex items-center">
-                  <select id="custom_tags" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" style="color: white;">
-                    <option disabled selected value="" style="color: white;">Custom Tags</option>
+                  <select id="custom_tags" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700" >
+                    <option disabled selected value="" class="text-gray-900 dark:text-white">Custom Tags</option>
                     {% for tag in custom_tags %}
-                    <option value="{{ tag }}" style="color: white;">{{ tag }}</option>
+                    <option value="{{ tag }}" class="text-gray-900 dark:text-white">{{ tag }}</option>
                     {% endfor %}
                   </select>
                 </li>

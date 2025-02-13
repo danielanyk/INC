@@ -3,7 +3,7 @@ import logging
 import os
 from flask_migrate import Migrate
 from flask_minify import Minify
-
+from apps.config import Config
 from sys import exit
 from flask import jsonify, request
 from apps.config import config_dict
@@ -11,6 +11,7 @@ from apps import create_app, mongo
 from celery import Celery, Task
 from flask_restful import Resource, Api
 from apps.home.models import Product
+import json
 
 
 # logging.basicConfig(level=logging.DEBUG,
@@ -68,8 +69,13 @@ try:
         func()
         return 'Server shutting down...'
 
+    def clear_processed_videos():
+        with open(Config.BLACK_PROCESSED_VIDEOS, "w") as file:
+            json.dump([], file, indent=4)
+
     if __name__ == "__main__":
         logger.debug('Starting the Flask application...')
+        clear_processed_videos()
         app.run(host='0.0.0.0', port=5000)
 
 except ImportError as e:

@@ -63,11 +63,6 @@ mongo_backups/
 #ffmpeg
 apps/home/Tools/ffmpeg.exe
 labelme.exe
-Labelme.exe
 
-Batches
-apps/home/Engines/configs/_base_
-apps/static/dist/images
-A_QGIS/MongoDB Connection/data
-
+# Team black
 black/

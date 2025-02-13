@@ -11,12 +11,24 @@ class Config(object):
 
     MONGO_URI = os.getenv('MONGO_URI', None)
 
-    CELERY_SCRIPTS_DIR        = os.path.join(basedir, "tasks_scripts")
+    CELERY_SCRIPTS_DIR        = os.path.join(basedir, "tasks_scripts" )
     CELERY_LOGS_URL           = "/tasks_logs/"
-    CELERY_LOGS_DIR           = os.path.join(basedir, "tasks_logs")
+    CELERY_LOGS_DIR           = os.path.join(basedir, "tasks_logs"    )
 
     MEDIA_FOLDER = os.path.join(basedir, "media")
-    PROFILE_FOLDER = os.path.join(basedir, "static", "dist", "img") #! New Change : Note This is placeholder as this folder will be not included in git track. Need new central pic folder.
+
+    #=== Team Black ===
+    BLACK_UPLOAD_FOLDER = os.path.join(basedir, "team_black","uploads")
+    BLACK_OUTPUT_FOLDER = os.path.join(basedir,"static","outputs")
+    BLACK_SIGN_MODEL_WEIGHTS_FILE= os.path.join(basedir, "team_black","models","sign.pt")
+    BLACK_MARKING_MODEL_WEIGHTS_FILE= os.path.join(basedir, "team_black","models","marking.pt")
+    BLACK_TRACKER_WEIGHTS_FILE= os.path.join(basedir, "team_black","models","bytetrack.yaml")
+    BLACK_THUMBNAIL_FOLDER = os.path.join(basedir,"static","thumbnails")
+    BLACK_PROCESSED_VIDEOS=os.path.join(basedir, "team_black","processed_videos.json")
+
+    #=== OKS New Changes ===
+    PROFILE_FOLDER = os.path.join(basedir, "static", "dist", "img")
+
 
     if not MONGO_URI:
         print('> Error: MongoDB URI is not set')
