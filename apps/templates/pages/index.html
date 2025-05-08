@@ -1,14 +1,16 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='dist/defecttoggle.css') }}">
 {% extends "layouts/base.html" %}
 
 {% block content %}
 
 <main>
   <script src="/static/assets/buttonlisten.js"></script>
-  <script src="/static/assets/donut.js"></script>
+  <!-- <script src="/static/assets/donut.js"></script> -->
   <script src="/static/assets/upload.js"></script>
   <script src="/static/assets/batchTable.js"></script>
   <!-- <script src="/static/assets/bundle.js"></script> -->
   <script src="/static/assets/imageTable.js"></script>
+  
   <script type="text/javascript" src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="cdfpmgml5cfi57b"></script>
 
   <script>
@@ -232,6 +234,14 @@
                   <label for="toggle2">Cracks and peeling</label>
                   <input type="checkbox" id="toggle2" checked>
               </div>
+              <div class="toggle">
+                <label for="toggle5">Drain</label>
+                <input type="checkbox" id="toggle5" checked>
+            </div>
+            <div class="toggle">
+              <label for="toggle6">Missing Signs</label>
+              <input type="checkbox" id="toggle6" checked>
+          </div>
               </div>
               <script src="/static/assets/toggleCheck.js"></script>
             <div>

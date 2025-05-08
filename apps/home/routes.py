@@ -23,7 +23,7 @@ from celery import current_app
 import datetime
 from datetime import datetime
 from apps.config import Config
-from apps.home.process import pipeline
+from apps.home.process import (pipeline,saving_reportdata,changing_reportdata)
 from apps.home.report import (
     get_reports,
     get_filter_tags,
@@ -51,6 +51,7 @@ import subprocess
 from apps.home.process import reannotate
 import dropbox
 from apps.home.dropbox_authy import get_auth_flow
+from functools import cache
 client = MongoClient("mongodb://localhost:27017/FYP")
 
 
@@ -95,6 +96,77 @@ def batch(batchID):
         }
     return render_template("pages/index.html", **context)
 
+# /batch/<batchID> batchID, methods=['POST']
+# @blueprint.route("/makereport")
+# def makereport():
+#     # data = request.get_json()
+#     # image_path = data.get('imagepath')
+#     image_path = request.args.get('imgpath')
+#     defect_type = request.args.get('defecttype')
+#     defect_type=image_path.replace('.jpg','_'+defect_type+"_defect.jpg")
+#     print(image_path)
+#     return render_template("accounts/makereport.html", image_path=image_path,defect_type=defect_type)
+
+from flask import send_file, abort
+import os
+
+@blueprint.route("/makereport")
+def makereport():
+    raw_path = request.args.get('imgpath')  # Full path
+    defecttype = request.args.get('defecttype')
+    status = request.args.get('status')
+    print(defecttype)
+    defect_label=defecttype.replace(' ',"_")
+    # Construct URLs pointing to the custom serving route, image_url=image_url
+    # image_url = url_for('home_blueprint.open_file', path=raw_path)
+    defect_path = raw_path.replace('.jpg', f'_{defect_label}_defect.jpg')
+    defect_url = url_for('home_blueprint.open_file', path=defect_path)
+    # [:-4]
+    imgpath=raw_path
+    return render_template("accounts/makereport.html", defect_type=defect_url,image_path=imgpath,defecttype=defecttype,status=status)
+
+@blueprint.route('/openfile')
+def open_file():
+    filepath = request.args.get('path')  # full path like C:\Users\...\image.jpg
+    if not filepath or not os.path.isfile(filepath):
+        return abort(404)
+    return send_file(filepath)
+# @blueprint.route('/load_image')
+# def load_image():
+#     path = request.args.get('path')
+#     if not path:
+#         return "No path provided", 400
+#     try:
+#         return send_file(path, mimetype='image/jpeg')
+#     except Exception as e:
+#         return f"Error loading file: {e}", 500
+    
+# @blueprint.route('/load_image2')
+# def load_image2():
+#     path = request.args.get('path')
+#     defect_type = request.args.get('defect_type')
+#     # path=path.replace('.jpg','_'+defect_type+"_defect.jpg")
+#     print("Path:", path)
+#     print("Defect Type:", defect_type)
+    
+#     # Do something with both...
+#     try:
+#         return send_file(path, mimetype='image/jpeg')
+#     except Exception as e:
+#         return f"Error loading file: {e}", 500
+
+@blueprint.route("/submit_report", methods=['POST'])
+def submit_report():
+    data=request.json
+    
+    print('request submitted')
+    if "unchecked" in data["defectstatus"]:
+        print("saving_report")
+        saving_reportdata(db, data)
+    else:
+        print("changing_report")
+        changing_reportdata(db,data)
+    return jsonify({"message": "success"})
 
 @blueprint.route("/starter")
 def starter():
@@ -142,62 +214,238 @@ def update_table():
         batches_list.append(batch)
     return jsonify(batches_list)
 
-
+#kyui
+# @cache
 @blueprint.route("/update_image_table/<batchID>", methods=["GET"])
 def update_image_table(batchID):
     batchID = int(batchID)
+    # pipeline = [
+       
+    #             "severity": {"$push": "$defects.severity"}, {
+    #         "$lookup": {
+    #             "from": "batchImage",
+    #             "localField": "imageID",
+    #             "foreignField": "imageID",
+    #             "as": "batch_info",
+    #         }
+    #     },
+    #     {"$unwind": "$batch_info"},
+    #     {"$match": {"batch_info.batchID": batchID}},
+    #     {
+    #         "$lookup": {
+    #             "from": "defect",
+    #             "localField": "imageID",
+    #             "foreignField": "imageID",
+    #             "as": "defects",
+    #         }
+    #     },
+    #     {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+    #     {"$sort": {"_id": 1}},
+    #     {
+    #         "$group": {
+    #             "_id": "$imageID",
+    #             "imagePath": {"$first": "$imagePath"},
+    #             "location": {
+    #                 "$first": {
+    #                     "town": "$town",
+    #                     "block": "$block",
+    #                     "road": "$road",
+    #                     "roadType": "$roadType",
+    #                 }
+    #             },
+    #             "defects": {"$push": "$defects.outputLabel"},
+    #             "outputID": {"$push": "$defects.outputID"},
+    #         }
+    #     },
+    #     {
+    #         "$project": {
+    #             "_id": 0,
+    #             "imagePath": 1,
+    #             "imageID": "$_id",
+    #             "location": {"$concat": ["$location.town"]},
+    #             "outputID": 1,
+    #             "defects": 1,
+    #             "severity": 1,
+    #         }
+    #     },
+    # ]
+
+    #MOST ORIGINAL ONE
+#     pipeline = [
+#     {
+#         "$lookup": {
+#             "from": "batchImage",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "batch_info",
+#         }
+#     },
+#     {"$unwind": "$batch_info"},
+#     {"$match": {"batch_info.batchID": batchID}},
+#     {
+#         "$lookup": {
+#             "from": "defect",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "defects",
+#         }
+#     },
+#     {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+#     {"$sort": {"_id": 1}},
+#     {
+#         "$group": {
+#             "_id": "$imageID",
+#             "imagePath": {"$first": "$imagePath"},
+#             "location": {
+#                 "$first": {
+#                     "town": "$town",
+#                     "block": "$block",
+#                     "road": "$road",
+#                     "roadType": "$roadType",
+#                 }
+#             },
+#             "defects": {"$push": "$defects.outputLabel"},
+#             "outputID": {"$push": "$defects.outputID"},
+#             "severity": {"$push": "$defects.severity"},  # <== this is now correctly inside $group
+#         }
+#     },
+#    {
+#         "$project": {
+#             "_id": 0,
+#             "imagePath": 1,
+#             "imageID": "$_id",
+#             "location": {"$concat": ["$location.town"]},
+#             "outputID": 1,
+#             "defects": 1,
+#             "severity": 1,
+#         }
+#     }, 
+    
+
+
+# ]
     pipeline = [
-        {
-            "$lookup": {
-                "from": "batchImage",
-                "localField": "imageID",
-                "foreignField": "imageID",
-                "as": "batch_info",
-            }
-        },
-        {"$unwind": "$batch_info"},
-        {"$match": {"batch_info.batchID": batchID}},
-        {
-            "$lookup": {
-                "from": "defect",
-                "localField": "imageID",
-                "foreignField": "imageID",
-                "as": "defects",
-            }
-        },
-        {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
-        {"$sort": {"_id": 1}},
-        {
-            "$group": {
-                "_id": "$imageID",
-                "imagePath": {"$first": "$imagePath"},
-                "location": {
-                    "$first": {
-                        "town": "$town",
-                        "block": "$block",
-                        "road": "$road",
-                        "roadType": "$roadType",
+    {
+        "$lookup": {
+            "from": "batchImage",
+            "localField": "imageID",
+            "foreignField": "imageID",
+            "as": "batch_info",
+        }
+    },
+    {"$unwind": "$batch_info"},
+    {"$match": {"batch_info.batchID": batchID}},
+    {
+        "$lookup": {
+            "from": "defect",
+            "localField": "imageID",
+            "foreignField": "imageID",
+            "as": "defects",
+        }
+    },
+    {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+    {"$sort": {"_id": 1}},
+    {
+        "$group": {
+            "_id": "$imageID",
+            "imagePath": {"$first": "$imagePath"},
+            "location": {
+                "$first": {
+                    "town": "$town",
+                    "block": "$block",
+                    "road": "$road",
+                    "roadType": "$roadType",
+                }
+            },
+            "defects": {"$push": "$defects.outputLabel"},
+            "outputID": {"$push": "$defects.outputID"},
+            "severity": {"$push": "$defects.severity"},
+        }
+    },
+    {
+        "$unwind": "$outputID"
+    },
+    {
+        "$addFields": {
+            "outputID_str": { "$toString": "$outputID" }
+        }
+    },
+    {
+        "$lookup": {
+            "from": "report",
+            "let": { "imageID": "$_id", "outputID_str": "$outputID_str" },
+            "pipeline": [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$and": [
+                                { "$eq": ["$imageID", "$$imageID"] },
+                                { "$eq": ["$defectNumber", "$$outputID_str"] }
+                            ]
+                        }
                     }
                 },
-                "defects": {"$push": "$defects.outputLabel"},
-                "outputID": {"$push": "$defects.outputID"},
-                "severity": {"$push": "$defects.severity"},
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "imagePath": 1,
-                "imageID": "$_id",
-                "location": {"$concat": ["$location.town"]},
-                "outputID": 1,
-                "defects": 1,
-                "severity": 1,
-            }
-        },
-    ]
+                { "$project": { "status": 1, "_id": 0 } }
+            ],
+            "as": "report_info"
+        }
+    },
+    {
+        "$unwind": {
+            "path": "$report_info",
+            "preserveNullAndEmptyArrays": True
+        }
+    },
+    {
+        "$group": {
+            "_id": "$_id",
+            "imagePath": { "$first": "$imagePath" },
+            "location": { "$first": "$location" },
+            "defects": { "$push": "$defects" },
+            "outputID": { "$push": "$outputID" },
+            "severity": { "$push": "$severity" },
+            "status": { "$push": "$report_info.status" }
+        }
+    },
+    # ✅ Add sort here
+    {
+        "$sort": { "imagePath": 1 }
+    },
+    {
+        "$project": {
+            "_id": 0,
+            "imagePath": 1,
+            "imageID": "$_id",
+            "location": { "$concat": ["$location.town"] },
+            "outputID": 1,
+            "defects": 1,
+            "severity": 1,
+            "status": 1  
+        }
+    }
+]
+
+
+
     results = db.image.aggregate(pipeline)
+# {
+#     "$project": {
+#         "_id": 0,
+#         "imagePath": {
+#             "$concat": [
+#                 { "$arrayElemAt": [{ "$split": ["$imagePath", "."] }, 0] },
+#                 "_defect.",
+#                 { "$arrayElemAt": [{ "$split": ["$imagePath", "."] }, 1] }
+#             ]
+#         },
+#         "imageID": "$_id",
+#         "location": { "$concat": ["$location.town"] },
+#         "outputID": 1,
+#         "defects": 1,
+#         "severity": 1,
+#     }}
     image_table_list = list(results)
+    # print(image_table_list)
     return jsonify(image_table_list)
 
 @blueprint.route('/dropbox_auth_finish')
@@ -446,6 +694,7 @@ def edit_report():
     return jsonify({"message": "success"})
 
 
+
 @blueprint.route("/report", methods=["GET"])
 def report():
     batch, defects, town_tags, custom_tags = get_filter_tags()
@@ -499,7 +748,7 @@ def get_reports_route():
     print(tags)
     reports = get_reports(tags)
     return jsonify(reports)
-
+#use this to view report
 @blueprint.route("/get_reportPath/<imageID>/<defect>", methods=["GET"])
 def get_reportPath(imageID,defect):
     imageID = int(imageID)
@@ -518,6 +767,181 @@ def view_temp():
     print(data)
     view_report(data["path"])
     return jsonify("success")
+# 
+# @blueprint.route("/viewreport")
+# def viewreport():
+#     defecttype = request.args.get('defecttype')
+#     imageID = int(request.args.get('imageID'))
+#     print(imageID)
+#     pipeline = [
+#     {
+#         "$match": {
+#             "imageID": imageID
+#         }
+#     },
+#     {
+#         "$lookup": {
+#             "from": "defect",
+#             "let": { "reportDefectNumber": "$defectNumber" },
+#             "pipeline": [
+#                 {
+#                     "$match": {
+#     "$expr": {
+#         "$and": [
+#             { "$eq": ["$imageID", imageID] },
+#             {
+#                 "$regexMatch": {
+#                     "input": "$outputLabel",
+#                     "regex": defecttype,
+#                     "options": "i"
+#                 }
+#             },
+#             { "$eq": [{ "$toString": "$outputID" }, "$$reportDefectNumber"] }
+#         ]
+#     }
+# }
+
+#                 }
+#             ],
+#             "as": "matchedDefects"
+#         }
+#     },
+#     {
+#         "$match": {
+#             "matchedDefects.0": { "$exists": True }
+#         }
+#     },
+#     {
+#         "$project": {
+#             "_id": 0,
+#             "reportPath": 1
+#         }
+#     }
+# ]
+
+
+#     results = list(db.report.aggregate(pipeline))
+#     print(results)
+from flask import request, redirect, jsonify
+
+@blueprint.route("/viewreport")
+def viewreport():
+    defecttype = request.args.get('defecttype')
+    imageID = int(request.args.get('imageID'))
+    print(imageID)
+
+    pipeline = [
+        {
+            "$match": {
+                "imageID": imageID
+            }
+        },
+        {
+            "$lookup": {
+                "from": "defect",
+                "let": { "reportDefectNumber": "$defectNumber" },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    { "$eq": ["$imageID", imageID] },
+                                    {
+                                        "$regexMatch": {
+                                            "input": "$outputLabel",
+                                            "regex": defecttype,
+                                            "options": "i"
+                                        }
+                                    },
+                                    { "$eq": [{ "$toString": "$outputID" }, "$$reportDefectNumber"] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "as": "matchedDefects"
+            }
+        },
+        {
+            "$match": {
+                "matchedDefects.0": { "$exists": True }
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "reportPath": 1
+            }
+        }
+    ]
+
+    results = list(db.report.aggregate(pipeline))
+    print(results)
+
+    if len(results) > 1:
+        results = results[-1]
+    elif results:
+        results = results[0]
+    else:
+        return jsonify("no results"), 404
+
+    view_report(results["reportPath"])
+
+    # Redirect back to previous page
+    return redirect(request.referrer or "/")
+
+#     print(list(db.report.aggregate([
+#     { "$match": { "imageID": int(imageID) } }
+# ])))
+
+
+
+    if len(results)>1:
+        results=results[-1]
+    else:
+        results=results[0]
+    view_report(results["reportPath"])
+    return jsonify("success")
+
+# @blueprint.route("/viewreport")
+# def viewreport():
+#     defecttype = request.args.get('defecttype')
+#     imageID = int(request.args.get('imageID'))
+
+#     pipeline = [
+#         { "$match": { "imageID": imageID } },
+#         { "$lookup": {
+#             "from": "defect",
+#             "let": { "reportDefectNumber": "$defectNumber" },
+#             "pipeline": [
+#                 { "$match": {
+#                     "$expr": {
+#                         "$and": [
+#                             { "$eq": ["$imageID", imageID] },
+#                             { "$regexMatch": {
+#                                 "input": "$outputLabel",
+#                                 "regex": defecttype,
+#                                 "options": "i"
+#                             }},
+#                             { "$eq": [{ "$toString": "$outputID" }, "$$reportDefectNumber"] }
+#                         ]
+#                     }
+#                 }}
+#             ],
+#             "as": "matchedDefects"
+#         }},
+#         { "$match": { "matchedDefects.0": { "$exists": True } }},
+#         { "$project": { "_id": 0, "reportPath": 1 } }
+#     ]
+
+#     results = list(db.report.aggregate(pipeline))
+#     if len(results) > 1:
+#         results = results[-1]
+#     else:
+#         results = results[0]
+
+#     return send_file(results["reportPath"], as_attachment=False)
+
 
 
 @blueprint.route("/generate_report", methods=["POST"])
@@ -1366,3 +1790,4 @@ def result(video_id):
         video_data=video_data,
         missing_signs_data=missing_signs_data,
     )
+

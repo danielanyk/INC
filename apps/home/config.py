@@ -3,7 +3,7 @@ class ConfigData:
     INSPECTOR_NAME = 'John Doe'
     INSPECTION_TYPE = 'Routine'
     COMPANY_NAME = 'TSM Consultancy'
-    VIDEO_LOCATION = r"C:\Users\DanielYeoh\Desktop\INC_video"
+    VIDEO_LOCATION = r"C:\Users\ljy12\Desktop\INC_video"
     DROPBOX_AUTH_TOKEN = "sl.B66RqCHZjybO75rDuhVLTDQ60MPt3IPfgTNuHWH1UwFB4bjaJ7KNTC3KrZe4GfDalxkDTVK-Jn7YGatjwJccfD9xkCmDjcih6ERt6JD6P_mGxgywCs-TXBY-C7Xg0R1FVAkU5pRr4SkZSNQDKqeJhdA"
     DISPLAY_CONF = False
     DROPBOX_APP_KEY = "cdfpmgml5cfi57b"

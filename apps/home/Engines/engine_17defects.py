@@ -69,6 +69,7 @@ def load_model(
 
 @app.route("/predict17Defects", methods=["POST"])
 def predict():
+    load_model()
     image_path = request.json.get("image_path")
 
     if image_path == "" or image_path is None:

@@ -116,6 +116,9 @@ def profile():
 
     return render_template('accounts/profile.html', **context)
 
+
+
+
 #! Can use this function if want to add the ability to upload profile image from outside
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):

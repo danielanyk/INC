@@ -66,3 +66,8 @@ labelme.exe
 
 # Team black
 black/
+application/uploads/*
+Report_Scheduler/
+roads.csv
+
+.git.zip
