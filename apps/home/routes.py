@@ -147,6 +147,213 @@ def update_table():
 @blueprint.route("/update_image_table/<batchID>", methods=["GET"])
 def update_image_table(batchID):
     batchID = int(batchID)
+    # pipeline = [
+       
+    #             "severity": {"$push": "$defects.severity"}, {
+    #         "$lookup": {
+    #             "from": "batchImage",
+    #             "localField": "imageID",
+    #             "foreignField": "imageID",
+    #             "as": "batch_info",
+    #         }
+    #     },
+    #     {"$unwind": "$batch_info"},
+    #     {"$match": {"batch_info.batchID": batchID}},
+    #     {
+    #         "$lookup": {
+    #             "from": "defect",
+    #             "localField": "imageID",
+    #             "foreignField": "imageID",
+    #             "as": "defects",
+    #         }
+    #     },
+    #     {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+    #     {"$sort": {"_id": 1}},
+    #     {
+    #         "$group": {
+    #             "_id": "$imageID",
+    #             "imagePath": {"$first": "$imagePath"},
+    #             "location": {
+    #                 "$first": {
+    #                     "town": "$town",
+    #                     "block": "$block",
+    #                     "road": "$road",
+    #                     "roadType": "$roadType",
+    #                 }
+    #             },
+    #             "defects": {"$push": "$defects.outputLabel"},
+    #             "outputID": {"$push": "$defects.outputID"},
+    #         }
+    #     },
+    #     {
+    #         "$project": {
+    #             "_id": 0,
+    #             "imagePath": 1,
+    #             "imageID": "$_id",
+    #             "location": {"$concat": ["$location.town"]},
+    #             "outputID": 1,
+    #             "defects": 1,
+    #             "severity": 1,
+    #         }
+    #     },
+    # ]
+
+    #MOST ORIGINAL ONE
+#     pipeline = [
+#     {
+#         "$lookup": {
+#             "from": "batchImage",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "batch_info",
+#         }
+#     },
+#     {"$unwind": "$batch_info"},
+#     {"$match": {"batch_info.batchID": batchID}},
+#     {
+#         "$lookup": {
+#             "from": "defect",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "defects",
+#         }
+#     },
+#     {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+#     {"$sort": {"_id": 1}},
+#     {
+#         "$group": {
+#             "_id": "$imageID",
+#             "imagePath": {"$first": "$imagePath"},
+#             "location": {
+#                 "$first": {
+#                     "town": "$town",
+#                     "block": "$block",
+#                     "road": "$road",
+#                     "roadType": "$roadType",
+#                 }
+#             },
+#             "defects": {"$push": "$defects.outputLabel"},
+#             "outputID": {"$push": "$defects.outputID"},
+#             "severity": {"$push": "$defects.severity"},  # <== this is now correctly inside $group
+#         }
+#     },
+#    {
+#         "$project": {
+#             "_id": 0,
+#             "imagePath": 1,
+#             "imageID": "$_id",
+#             "location": {"$concat": ["$location.town"]},
+#             "outputID": 1,
+#             "defects": 1,
+#             "severity": 1,
+#         }
+#     }, 
+    
+
+
+# ]
+##version before blacks onemap
+#     pipeline = [
+#     {
+#         "$lookup": {
+#             "from": "batchImage",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "batch_info",
+#         }
+#     },
+#     {"$unwind": "$batch_info"},
+#     {"$match": {"batch_info.batchID": batchID}},
+#     {
+#         "$lookup": {
+#             "from": "defect",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "defects",
+#         }
+#     },
+#     {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+#     {"$sort": {"_id": 1}},
+#     {
+#         "$group": {
+#             "_id": "$imageID",
+#             "imagePath": {"$first": "$imagePath"},
+#             "location": {
+#                 "$first": {
+#                     "town": "$town",
+#                     "block": "$block",
+#                     "road": "$road",
+#                     "roadType": "$roadType",
+#                 }
+#             },
+#             "defects": {"$push": "$defects.outputLabel"},
+#             "outputID": {"$push": "$defects.outputID"},
+#             "severity": {"$push": "$defects.severity"},
+#         }
+#     },
+#     {
+#         "$unwind": "$outputID"
+#     },
+#     {
+#         "$addFields": {
+#             "outputID_str": { "$toString": "$outputID" }
+#         }
+#     },
+#     {
+#         "$lookup": {
+#             "from": "report",
+#             "let": { "imageID": "$_id", "outputID_str": "$outputID_str" },
+#             "pipeline": [
+#                 {
+#                     "$match": {
+#                         "$expr": {
+#                             "$and": [
+#                                 { "$eq": ["$imageID", "$$imageID"] },
+#                                 { "$eq": ["$defectNumber", "$$outputID_str"] }
+#                             ]
+#                         }
+#                     }
+#                 },
+#                 { "$project": { "status": 1, "_id": 0 } }
+#             ],
+#             "as": "report_info"
+#         }
+#     },
+#     {
+#         "$unwind": {
+#             "path": "$report_info",
+#             "preserveNullAndEmptyArrays": True
+#         }
+#     },
+#     {
+#         "$group": {
+#             "_id": "$_id",
+#             "imagePath": { "$first": "$imagePath" },
+#             "location": { "$first": "$location" },
+#             "defects": { "$push": "$defects" },
+#             "outputID": { "$push": "$outputID" },
+#             "severity": { "$push": "$severity" },
+#             "status": { "$push": "$report_info.status" }
+#         }
+#     },
+#     # ✅ Add sort here
+#     {
+#         "$sort": { "imagePath": 1 }
+#     },
+#     {
+#         "$project": {
+#             "_id": 0,
+#             "imagePath": 1,
+#             "imageID": "$_id",
+#             "location": { "$concat": ["$location.town"] },
+#             "outputID": 1,
+#             "defects": 1,
+#             "severity": 1,
+#             "status": 1  
+#         }
+#     }
+# ]
+
     pipeline = [
         {
             "$lookup": {
@@ -180,25 +387,99 @@ def update_image_table(batchID):
                         "roadType": "$roadType",
                     }
                 },
+                "longitude": {"$first": "$longitude"},
+                "latitude": {"$first": "$latitude"},
                 "defects": {"$push": "$defects.outputLabel"},
                 "outputID": {"$push": "$defects.outputID"},
                 "severity": {"$push": "$defects.severity"},
             }
         },
         {
+            "$unwind": "$outputID"
+        },
+        {
+            "$addFields": {
+                "outputID_str": { "$toString": "$outputID" }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "report",
+                "let": { "imageID": "$_id", "outputID_str": "$outputID_str" },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    { "$eq": ["$imageID", "$$imageID"] },
+                                    { "$eq": ["$defectNumber", "$$outputID_str"] }
+                                ]
+                            }
+                        }
+                    },
+                    { "$project": { "status": 1, "_id": 0 } }
+                ],
+                "as": "report_info"
+            }
+        },
+        {
+            "$unwind": {
+                "path": "$report_info",
+                "preserveNullAndEmptyArrays": True
+            }
+        },
+        {
+            "$group": {
+                "_id": "$_id",
+                "imagePath": { "$first": "$imagePath" },
+                "location": { "$first": "$location" },
+                "longitude": { "$first": "$longitude" },
+                "latitude": { "$first": "$latitude" },
+                "defects": { "$push": "$defects" },
+                "outputID": { "$push": "$outputID" },
+                "severity": { "$push": "$severity" },
+                "status": { "$push": "$report_info.status" }
+            }
+        },
+        {
+            "$sort": { "imagePath": 1 }
+        },
+        {
             "$project": {
                 "_id": 0,
                 "imagePath": 1,
                 "imageID": "$_id",
-                "location": {"$concat": ["$location.town"]},
+                "location": { "$concat": ["$location.town"] },
+                "longitude": 1,
+                "latitude": 1,
                 "outputID": 1,
                 "defects": 1,
                 "severity": 1,
+                "status": 1
             }
-        },
+        }
     ]
+
     results = db.image.aggregate(pipeline)
+# {
+#     "$project": {
+#         "_id": 0,
+#         "imagePath": {
+#             "$concat": [
+#                 { "$arrayElemAt": [{ "$split": ["$imagePath", "."] }, 0] },
+#                 "_defect.",
+#                 { "$arrayElemAt": [{ "$split": ["$imagePath", "."] }, 1] }
+#             ]
+#         },
+#         "imageID": "$_id",
+#         "location": { "$concat": ["$location.town"] },
+#         "outputID": 1,
+#         "defects": 1,
+#         "severity": 1,
+#     }}
     image_table_list = list(results)
+    # print(image_table_list[0])
+    # print(image_table_list)
     return jsonify(image_table_list)
 
 @blueprint.route('/dropbox_auth_finish')
