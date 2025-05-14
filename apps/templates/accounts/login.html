@@ -1,3 +1,48 @@
+<script>
+        window.onload = function () {
+            fetch('/check_user_collection')
+        .then(response => response.text())
+        .then(text => console.log("Server response:", text))
+        .catch(error => console.error('Error checking/creating collection:', error));
+            fetch('/check_roles_collection')
+        .then(response => response.text())
+        .then(text => console.log("Server response:", text))
+        .catch(error => console.error('Error checking/creating collection:', error));
+
+            // fetch('/check_roles_collection')
+            //     .then(response => response.json())
+            //     .then(data => {
+            //         const toggleContainer = document.getElementById('role-toggle');
+            //         toggleContainer.innerHTML = ''; // clear placeholder
+
+            //         data.forEach(role => {
+            //             const label = document.createElement('label');
+            //             label.innerHTML = `
+            //                 <input type="radio" name="role" value="${role.roleid}">
+            //                 ${role.role}
+            //             `;
+            //             toggleContainer.appendChild(label);
+            //             toggleContainer.appendChild(document.createElement('br'));
+            //         });
+            //     })
+            //     .catch(error => {
+            //         console.error('Error loading roles:', error);
+            //         document.getElementById('role-toggle').textContent = "Failed to load roles.";
+            //     });
+
+            // document.getElementById('role-form').addEventListener('submit', function (e) {
+            //     e.preventDefault();
+            //     const selected = document.querySelector('input[name="role"]:checked');
+            //     if (selected) {
+            //         alert(`Selected Role ID: ${selected.value}`);
+            //     } else {
+            //         alert("Please select a role.");
+            //     }
+            // });
+        };
+    </script>
+
+
 {% extends "layouts/base-auth.html" %}
 
 
@@ -33,13 +78,50 @@
                     </div>
 
                 </div>
+                
                 <button type="submit" name="login" class="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-700 rounded-lg hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 sm:w-auto dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">Login to your account</button>
-                <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <!-- <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Not registered? <a href="{{ url_for('authentication_blueprint.register') }}" class="text-primary-700 hover:underline dark:text-primary-500">Create account</a>
-                </div>
+                </div> -->
             </form>
         </div>
     </div>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("form");
+    if (form) {
+        form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            console.log("Login form submitted");
+
+            const formData = new FormData(this);
+            formData.append("login", "1");
+
+            const response = await fetch("/login", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem("access_token", data.access_token);
+                localStorage.setItem("userid", data.userid);
+                localStorage.setItem("user_role", data.role);
+                console.log('Login success, redirecting');
+
+                // ✅ Real browser redirect to a Flask-computed route
+                // window.location.assign("/login-success-url");
+                window.location.href='/index';
+            } else {
+                alert(data.error || "Login failed");
+            }
+        });
+    } else {
+        console.error("Login form not found in DOM");
+    }
+});
+</script>
 
 {% endblock content %}

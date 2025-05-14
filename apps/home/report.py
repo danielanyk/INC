@@ -15,13 +15,13 @@ from reportlab.lib.utils import ImageReader
 import tempfile
 import webbrowser
 from PIL import Image, ImageDraw
-
+from apps.home.onemap_service import generate_static_map
 from apps.home.config import ConfigData
 
 # db=mongo.db
 client = MongoClient("mongodb://localhost:27017/FYP")
-db = client["FYP"]
-
+# db = client["FYP"]
+db=client['newdb']
 
 # def lookup_reports(ids):
 #     """
@@ -932,15 +932,24 @@ def template1(c, view_report):
     text_width = c.stringWidth(text)
     c.drawCentredString(width / 2.0, height - 87, text)
     mapzoom = 15
-
+    print("\nwidth=",width,"\nheight=",height)
     try:
-        map_url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s({view_report['longitude']},{view_report['latitude']})/{view_report['longitude']},{view_report['latitude']},{mapzoom}/800x600?access_token=pk.eyJ1IjoiaGF6ZW0tcGF0ZWwiLCJhIjoiY2xkdWF6ejE3MDQweTNvbXBheHZ0Z2tsdSJ9.TXwOfeEyMV29Qy8V7y-uwQ"
-        map_path = ImageReader(map_url)
-        c.drawImage(map_path, 42, height - 398, width=width - 83, height=305)
+        # map_url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s({view_report['longitude']},{view_report['latitude']})/{view_report['longitude']},{view_report['latitude']},{mapzoom}/800x600?access_token=pk.eyJ1IjoiaGF6ZW0tcGF0ZWwiLCJhIjoiY2xkdWF6ejE3MDQweTNvbXBheHZ0Z2tsdSJ9.TXwOfeEyMV29Qy8V7y-uwQ"
+        map_io = generate_static_map(view_report['latitude'], view_report['longitude'], width=512, height=512)
+
+        if map_io:
+            # Convert BytesIO to ImageReader
+            map_image = ImageReader(map_io)
+            # with open("debug_map.png", "wb") as f:
+            #     f.write(map_io.getbuffer())
+            # Draw the image into the PDF
+            c.drawImage(map_image, 100, height - 398, width=width - 200, height=305)
+        else:
+            print("Failed to fetch map image")
     except FileNotFoundError:
         c.drawString(250, height - 240, "Sketch not available")
     except Exception as e:
-        print("An error occurred:", e)
+        print("An error occurred while drawing the map:", repr(e))
         c.drawString(250, height - 240, "Sketch not available")
 
     underline_y = height - 88

@@ -33,6 +33,7 @@ from apps.home.report import (
     get_amount_of_defects,
     get_bbox,
 )
+from apps.home.onemap_service import generate_static_map
 from apps.home.config import ConfigData
 import requests
 import cv2
@@ -55,10 +56,90 @@ from functools import cache
 client = MongoClient("mongodb://localhost:27017/FYP")
 
 
-db = client["FYP"]
+# db = client["FYP"]
+db=client['newdb']
 if ConfigData.DROPBOX_AUTH_TOKEN!="":
     dbx = dropbox.Dropbox(ConfigData.DROPBOX_AUTH_TOKEN)
 blueprint.secret_key = "IFUCKINGHATEINCFUCKINCFUCKINCFUCKINCFUCKINCFUCKIAN6969696969696969699696969"
+
+@blueprint.route('/check_defecttype_collection')
+def check_defecttype_collection():
+    collection_name = "defecttype"
+
+    if collection_name in db.list_collection_names():
+        return 'defecttype existing'
+    else:
+        db.create_collection(collection_name)
+
+        defect_classes = {
+            "Alligator Crack": 1,
+            "Arrow": 2,
+            "Block Crack": 3,
+            "Damaged Base Crack": 4,
+            "Localised Surface Defect": 5,
+            "Multi Crack": 6,
+            "Parallel Lines": 7,
+            "Peel Off With Cracks": 8,
+            "Peeling Off Premix": 9,
+            "Pothole With Crack": 10,
+            "Rigid Pavement Crack": 11,
+            "Single Crack": 12,
+            "Transverse Crack": 13,
+            "Wearing Course Peeling Off": 14,
+            "White Lane": 15,
+            "Yellow Lane": 16,
+            "Raveling": 17,
+            "Faded Kerb": 18,
+            "Paint Spillage": 19,
+        }
+
+        db[collection_name].insert_many([
+            {"defecttypeid": _id, "defecttype": name} for name, _id in defect_classes.items()
+        ])
+
+        return "created defecttype"
+
+@blueprint.route('/check_roles_collection')
+def check_roles_collection():
+    collection_name = "roles"
+
+    if collection_name not in db.list_collection_names():
+        roles_data = [
+            {"roleid": 1, "role": "Admin"},
+            {"roleid": 2, "role": "Inspector"}
+        ]
+        db[collection_name].insert_many(roles_data)
+
+    # Return all roles
+    roles = list(db[collection_name].find({}, {'_id': 0}))
+    return jsonify(roles)
+
+from werkzeug.security import generate_password_hash
+@blueprint.route('/check_user_collection')
+def check_user_collection():
+    collection_name = "users"
+    default_user = {
+    "userid": 1,
+    "roleid": 1,
+    "username": "1",
+    "firstname": "1",
+    "lastname": "1",
+    "password_hash": generate_password_hash("1")  # ✅ fix key name
+}
+
+
+    if collection_name in db.list_collection_names():
+        # Collection exists, check if user with userid=1 exists
+        if db.users.find_one({"userid": 1}):
+            return "users existing"
+        else:
+            db.users.insert_one(default_user)
+            return "inserted default user into existing users collection"
+    else:
+        # Create collection and insert default user
+        db.create_collection(collection_name)
+        db.users.insert_one(default_user)
+        return "created users and inserted default user"
 
 @blueprint.route("/")
 @blueprint.route("/index")
@@ -115,6 +196,8 @@ def makereport():
     raw_path = request.args.get('imgpath')  # Full path
     defecttype = request.args.get('defecttype')
     status = request.args.get('status')
+    lon=request.args.get('lon')
+    lat=request.args.get('lat')
     print(defecttype)
     defect_label=defecttype.replace(' ',"_")
     # Construct URLs pointing to the custom serving route, image_url=image_url
@@ -123,7 +206,21 @@ def makereport():
     defect_url = url_for('home_blueprint.open_file', path=defect_path)
     # [:-4]
     imgpath=raw_path
-    return render_template("accounts/makereport.html", defect_type=defect_url,image_path=imgpath,defecttype=defecttype,status=status)
+    return render_template("accounts/makereport.html", defect_type=defect_url,image_path=imgpath,defecttype=defecttype,status=status,lat=lat,lon=lon)
+
+
+
+@blueprint.route('/map')
+def get_static_map():
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+    if not lat or not lon:
+        return "Missing latitude or longitude", 400
+
+    img_io = generate_static_map(lat, lon)
+    if img_io:
+        return send_file(img_io, mimetype='image/png')
+    return "Failed to fetch map", 500
 
 @blueprint.route('/openfile')
 def open_file():
@@ -324,108 +421,213 @@ def update_image_table(batchID):
 
 
 # ]
+##version before blacks onemap
+#     pipeline = [
+#     {
+#         "$lookup": {
+#             "from": "batchImage",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "batch_info",
+#         }
+#     },
+#     {"$unwind": "$batch_info"},
+#     {"$match": {"batch_info.batchID": batchID}},
+#     {
+#         "$lookup": {
+#             "from": "defect",
+#             "localField": "imageID",
+#             "foreignField": "imageID",
+#             "as": "defects",
+#         }
+#     },
+#     {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+#     {"$sort": {"_id": 1}},
+#     {
+#         "$group": {
+#             "_id": "$imageID",
+#             "imagePath": {"$first": "$imagePath"},
+#             "location": {
+#                 "$first": {
+#                     "town": "$town",
+#                     "block": "$block",
+#                     "road": "$road",
+#                     "roadType": "$roadType",
+#                 }
+#             },
+#             "defects": {"$push": "$defects.outputLabel"},
+#             "outputID": {"$push": "$defects.outputID"},
+#             "severity": {"$push": "$defects.severity"},
+#         }
+#     },
+#     {
+#         "$unwind": "$outputID"
+#     },
+#     {
+#         "$addFields": {
+#             "outputID_str": { "$toString": "$outputID" }
+#         }
+#     },
+#     {
+#         "$lookup": {
+#             "from": "report",
+#             "let": { "imageID": "$_id", "outputID_str": "$outputID_str" },
+#             "pipeline": [
+#                 {
+#                     "$match": {
+#                         "$expr": {
+#                             "$and": [
+#                                 { "$eq": ["$imageID", "$$imageID"] },
+#                                 { "$eq": ["$defectNumber", "$$outputID_str"] }
+#                             ]
+#                         }
+#                     }
+#                 },
+#                 { "$project": { "status": 1, "_id": 0 } }
+#             ],
+#             "as": "report_info"
+#         }
+#     },
+#     {
+#         "$unwind": {
+#             "path": "$report_info",
+#             "preserveNullAndEmptyArrays": True
+#         }
+#     },
+#     {
+#         "$group": {
+#             "_id": "$_id",
+#             "imagePath": { "$first": "$imagePath" },
+#             "location": { "$first": "$location" },
+#             "defects": { "$push": "$defects" },
+#             "outputID": { "$push": "$outputID" },
+#             "severity": { "$push": "$severity" },
+#             "status": { "$push": "$report_info.status" }
+#         }
+#     },
+#     # ✅ Add sort here
+#     {
+#         "$sort": { "imagePath": 1 }
+#     },
+#     {
+#         "$project": {
+#             "_id": 0,
+#             "imagePath": 1,
+#             "imageID": "$_id",
+#             "location": { "$concat": ["$location.town"] },
+#             "outputID": 1,
+#             "defects": 1,
+#             "severity": 1,
+#             "status": 1  
+#         }
+#     }
+# ]
+
     pipeline = [
-    {
-        "$lookup": {
-            "from": "batchImage",
-            "localField": "imageID",
-            "foreignField": "imageID",
-            "as": "batch_info",
-        }
-    },
-    {"$unwind": "$batch_info"},
-    {"$match": {"batch_info.batchID": batchID}},
-    {
-        "$lookup": {
-            "from": "defect",
-            "localField": "imageID",
-            "foreignField": "imageID",
-            "as": "defects",
-        }
-    },
-    {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
-    {"$sort": {"_id": 1}},
-    {
-        "$group": {
-            "_id": "$imageID",
-            "imagePath": {"$first": "$imagePath"},
-            "location": {
-                "$first": {
-                    "town": "$town",
-                    "block": "$block",
-                    "road": "$road",
-                    "roadType": "$roadType",
-                }
-            },
-            "defects": {"$push": "$defects.outputLabel"},
-            "outputID": {"$push": "$defects.outputID"},
-            "severity": {"$push": "$defects.severity"},
-        }
-    },
-    {
-        "$unwind": "$outputID"
-    },
-    {
-        "$addFields": {
-            "outputID_str": { "$toString": "$outputID" }
-        }
-    },
-    {
-        "$lookup": {
-            "from": "report",
-            "let": { "imageID": "$_id", "outputID_str": "$outputID_str" },
-            "pipeline": [
-                {
-                    "$match": {
-                        "$expr": {
-                            "$and": [
-                                { "$eq": ["$imageID", "$$imageID"] },
-                                { "$eq": ["$defectNumber", "$$outputID_str"] }
-                            ]
-                        }
+        {
+            "$lookup": {
+                "from": "batchImage",
+                "localField": "imageID",
+                "foreignField": "imageID",
+                "as": "batch_info",
+            }
+        },
+        {"$unwind": "$batch_info"},
+        {"$match": {"batch_info.batchID": batchID}},
+        {
+            "$lookup": {
+                "from": "defect",
+                "localField": "imageID",
+                "foreignField": "imageID",
+                "as": "defects",
+            }
+        },
+        {"$unwind": {"path": "$defects", "preserveNullAndEmptyArrays": False}},
+        {"$sort": {"_id": 1}},
+        {
+            "$group": {
+                "_id": "$imageID",
+                "imagePath": {"$first": "$imagePath"},
+                "location": {
+                    "$first": {
+                        "town": "$town",
+                        "block": "$block",
+                        "road": "$road",
+                        "roadType": "$roadType",
                     }
                 },
-                { "$project": { "status": 1, "_id": 0 } }
-            ],
-            "as": "report_info"
+                "longitude": {"$first": "$longitude"},
+                "latitude": {"$first": "$latitude"},
+                "defects": {"$push": "$defects.outputLabel"},
+                "outputID": {"$push": "$defects.outputID"},
+                "severity": {"$push": "$defects.severity"},
+            }
+        },
+        {
+            "$unwind": "$outputID"
+        },
+        {
+            "$addFields": {
+                "outputID_str": { "$toString": "$outputID" }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "report",
+                "let": { "imageID": "$_id", "outputID_str": "$outputID_str" },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    { "$eq": ["$imageID", "$$imageID"] },
+                                    { "$eq": ["$defectNumber", "$$outputID_str"] }
+                                ]
+                            }
+                        }
+                    },
+                    { "$project": { "status": 1, "_id": 0 } }
+                ],
+                "as": "report_info"
+            }
+        },
+        {
+            "$unwind": {
+                "path": "$report_info",
+                "preserveNullAndEmptyArrays": True
+            }
+        },
+        {
+            "$group": {
+                "_id": "$_id",
+                "imagePath": { "$first": "$imagePath" },
+                "location": { "$first": "$location" },
+                "longitude": { "$first": "$longitude" },
+                "latitude": { "$first": "$latitude" },
+                "defects": { "$push": "$defects" },
+                "outputID": { "$push": "$outputID" },
+                "severity": { "$push": "$severity" },
+                "status": { "$push": "$report_info.status" }
+            }
+        },
+        {
+            "$sort": { "imagePath": 1 }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "imagePath": 1,
+                "imageID": "$_id",
+                "location": { "$concat": ["$location.town"] },
+                "longitude": 1,
+                "latitude": 1,
+                "outputID": 1,
+                "defects": 1,
+                "severity": 1,
+                "status": 1
+            }
         }
-    },
-    {
-        "$unwind": {
-            "path": "$report_info",
-            "preserveNullAndEmptyArrays": True
-        }
-    },
-    {
-        "$group": {
-            "_id": "$_id",
-            "imagePath": { "$first": "$imagePath" },
-            "location": { "$first": "$location" },
-            "defects": { "$push": "$defects" },
-            "outputID": { "$push": "$outputID" },
-            "severity": { "$push": "$severity" },
-            "status": { "$push": "$report_info.status" }
-        }
-    },
-    # ✅ Add sort here
-    {
-        "$sort": { "imagePath": 1 }
-    },
-    {
-        "$project": {
-            "_id": 0,
-            "imagePath": 1,
-            "imageID": "$_id",
-            "location": { "$concat": ["$location.town"] },
-            "outputID": 1,
-            "defects": 1,
-            "severity": 1,
-            "status": 1  
-        }
-    }
-]
-
-
+    ]
 
     results = db.image.aggregate(pipeline)
 # {
@@ -445,6 +647,7 @@ def update_image_table(batchID):
 #         "severity": 1,
 #     }}
     image_table_list = list(results)
+    # print(image_table_list[0])
     # print(image_table_list)
     return jsonify(image_table_list)
 
@@ -467,8 +670,8 @@ def dropbox_auth_start():
     print(session)
     return redirect(get_auth_flow(session).start())
 
-@blueprint.route("/open_qgis", methods=["GET"])
-def open_qgis():
+@blueprint.route("/open_onemap", methods=["GET"])
+def open_onemap():
     print("Trying to open QGIS.")
     original_cwd = os.getcwd()
     try:

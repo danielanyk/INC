@@ -7,29 +7,57 @@ from urllib.parse import unquote
 import logging
 
 client = MongoClient("mongodb://localhost:27017/FYP")
-db = client["FYP"]
+# db = client["FYP"]
+db=client["newdb"]
 class Users(UserMixin):
     def __init__(self, **kwargs):
         self.username = kwargs.get('username')
-        self.name = kwargs.get('name')
+        self.fname = kwargs.get('firstname')
+        self.lname = kwargs.get('lastname')
         self.password_hash = kwargs.get('password_hash')
         self._id = kwargs.get('_id')
-        self.perm = "Admin"
+        # self.perm = "Admin"
+        self.role=kwargs.get('role')
         self.avatar = unquote(kwargs.get('avatar', "default-user.png")) #! New Change
 
     def save(self): #!New Change
-        user_data = {
-            'username': self.username,
-            'name': self.name,
-            'password_hash': self.password_hash,
-            "perm": self.perm,
-            "avatar": self.avatar #! New Change
-        }
-
+        print("\n in Users save ",self.role)
+        
+        self.role=int(self.role)
+        print(self._id)
+        
+            # Count documents in the collection
+            
+        
         try:
             if self._id:  # Update existing user
+                user_data = {
+            "roleid":self.role,
+            'username': self.username,
+            
+            'password_hash': self.password_hash,
+            # "perm": self.perm,
+            "avatar": self.avatar #! New Change
+            }
                 db.users.update_one({'_id': ObjectId(self._id)}, {'$set': user_data})
             else:  # Insert new user
+                count = db["users"].count_documents({})
+
+                # Auto-incremented ID
+                new_userid = count + 1
+
+
+                # Insert into collection
+                user_data = {
+                    'userid': new_userid,
+                    "roleid":self.role,
+                    'username': self.username,
+                    'fname': self.fname,
+                    'lname': self.lname,
+                    'password_hash': self.password_hash,
+                    # "perm": self.perm,
+                    "avatar": self.avatar #! New Change
+                }
                 inserted = db.users.insert_one(user_data)
                 self._id = inserted.inserted_id
         except Exception as e:
@@ -56,6 +84,32 @@ class Users(UserMixin):
         user_data = db.users.find_one({'username': username})
         if user_data:
             return cls(**user_data)
+        return None
+    @classmethod
+    def get_role_by_username(cls, username):
+        pipeline = [
+            {'$match': {'username': username}},
+            {
+                '$lookup': {
+                    'from': 'roles',
+                    'localField': 'roleid',
+                    'foreignField': 'roleid',
+                    'as': 'role_info'
+                }
+            },
+            {'$unwind': '$role_info'},
+            {
+                '$project': {
+                    '_id': 0,
+                    'userid': 1,
+                    'role': '$role_info.role'
+                }
+            }
+        ]
+
+        result = list(db.users.aggregate(pipeline))
+        if result:
+            return result[0]
         return None
 
     @classmethod

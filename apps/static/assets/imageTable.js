@@ -229,7 +229,7 @@ function renderTableRows(filteredData) {
       } else if (data.severity.includes(1)) {
         severityBorder = 'border-4 border-amber-400';
       }
-    
+      // console.log(item.longitude)
       const defectsHTML = `<span class="${severityBorder} ${defectClass.class}">${defectClass.text} (x${data.count})</span>`;
       const sanitizedDefect = defectClass.text.replace(/\s+/g, "-"); // Replace spaces with hyphens
       let b = '\\' + item.imagePath.split('\\').slice(item.imagePath.split('\\').indexOf('Batches')).join('\\');
@@ -251,10 +251,10 @@ function renderTableRows(filteredData) {
       let viewBtnHTML = '';
       console.log(defecttype,defectstatus,defectstatus[0] === "checked")
       if (defectstatus === "checked") {
-        reportBtnHTML = `<a href='/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}&status="checked' id="${btnID}" class="...">Edit Report</a>`;
+        reportBtnHTML = `<a href='/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}&status="checked"&lon=${encodeURIComponent(item.longitude)}&lat=${encodeURIComponent(item.latitude)}' id="${btnID}" class="...">Edit Report</a>`;
         viewBtnHTML = `<a id="view-${item.imageID}" href="/viewreport?imageID=${item.imageID}&defecttype=${encodeURIComponent(defecttype)}" class="...">View Report</a>`;
       } else {
-        reportBtnHTML = `<a href='/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}&status="unchecked' id="${btnID}" class="...">Make Report</a>`;
+        reportBtnHTML = `<a href='/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}&status="unchecked"&lon=${encodeURIComponent(item.longitude)}&lat=${encodeURIComponent(item.latitude)}' id="${btnID}" class="...">Make Report</a>`;
         viewBtnHTML = `<a id="view-${item.imageID}" href="${b}" loading='lazy' class="...">View Image</a>`;
       }
 

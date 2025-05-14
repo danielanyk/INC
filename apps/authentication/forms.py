@@ -1,7 +1,7 @@
 
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField
+from wtforms import StringField, PasswordField,HiddenField
 from wtforms.validators import DataRequired
 
 # login and registration
@@ -14,8 +14,10 @@ class LoginForm(FlaskForm):
 
 class CreateAccountForm(FlaskForm):
     username = StringField('Username', id='username_create', validators=[DataRequired()])
-    name = StringField('Name', id='name_create', validators=[DataRequired()])
+    firstname = StringField('Firstname', id='firstname_create', validators=[DataRequired()])
+    lastname = StringField('Lastname', id='lastname_create', validators=[DataRequired()])
     password = PasswordField('Password', id='pwd_create', validators=[DataRequired()])
+    role = HiddenField('Role', id='role_hidden', validators=[DataRequired()])
 
 
 class ChangePasswordForm(FlaskForm):

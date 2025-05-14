@@ -10,7 +10,8 @@ from config import ConfigData
 import datetime
 
 client = MongoClient("localhost", 27017)
-fdb = client["FYP"]
+# db = client["FYP"]
+db=client['newdb']
 defect_classes = {
     "Alligator Crack": 1,
     "Arrow": 2,
@@ -215,4 +216,4 @@ def apply_to_image(
 
 
 
-apply_to_image(db=fdb, image_id=4, inspectionDate="27/7/2024", toggle_confidence=False)
+apply_to_image(db=db, image_id=4, inspectionDate="27/7/2024", toggle_confidence=False)

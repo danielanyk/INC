@@ -52,6 +52,7 @@ mim install mmdet
 pip install ensemble_boxes
 pip install dropbox
 
+pip install Flask-JWT-Extended
 
 echo Setup complete.
 pause
