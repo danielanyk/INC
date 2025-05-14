@@ -1,0 +1,78 @@
+[
+    {
+        "typeID": 1,
+        "type": "Alligator Crack"
+    },
+    {
+        "typeID": 2,
+        "type": "Arrow"
+    },
+    {
+        "typeID": 3,
+        "type": "Block Crack"
+    },
+    {
+        "typeID": 4,
+        "type": "Damaged Base Crack"
+    },
+    {
+        "typeID": 5,
+        "type": "Localise Surface Defect"
+    },
+    {
+        "typeID": 6,
+        "type": "Multi Crack"
+    },
+    {
+        "typeID": 7,
+        "type": "Parallel Lines"
+    },
+    {
+        "typeID": 8,
+        "type": "Peel Off With Cracks"
+    },
+    {
+        "typeID": 9,
+        "type": "Peeling Off Premix"
+    },
+    {
+        "typeID": 10,
+        "type": "Pothole With Crack"
+    },
+    {
+        "typeID": 11,
+        "type": "Rigid Pavement Crack"
+    },
+    {
+        "typeID": 12,
+        "type": "Single Crack"
+    },
+    {
+        "typeID": 13,
+        "type": "Transverse Crack"
+    },
+    {
+        "typeID": 14,
+        "type": "Wearing Course Peeling Off"
+    },
+    {
+        "typeID": 15,
+        "type": "White Lane"
+    },
+    {
+        "typeID": 16,
+        "type": "Yellow Lane"
+    },
+    {
+        "typeID": 17,
+        "type": "Raveling"
+    },
+    {
+        "typeID": 18,
+        "type": "Faded Kerb"
+    },
+    {
+        "typeID": 19,
+        "type": "Paint Spillage"
+    }
+]

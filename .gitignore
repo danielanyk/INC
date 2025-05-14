@@ -1,0 +1,73 @@
+# Byte-compiled / optimized / DLL files / Engines
+__pycache__/
+*.py[cod]
+*.pth
+*.pyc
+*.gguf
+*.pt
+*.h5
+
+# Test and coverage files
+*.pytest_cache
+.coverage
+
+# Database & log files
+*.log
+*.geojson
+
+# Virtual environments
+env/
+venv/
+new_env/
+# macOS specific files
+.DS_Store
+
+# Sphinx documentation
+_build/
+_static/
+_templates/
+
+# JavaScript related files
+package-lock.json
+.vscode/symbols.json
+node_modules/
+yarn.lock
+
+# Specific directories and files
+env/
+env_test/
+node_modules/
+apps/static/assets/node_modules/
+apps/static/assets/yarn.lock
+apps/static/assets/.temp/
+apps/media/
+apps/home/Engines/mmsegmentation/
+active_learning/*
+
+# Engine Bats (Custom for each user)
+apps/home/Engines/engine_raveling.bat
+apps/home/Engines/engine_paintSpillage.bat
+apps/home/Engines/engine_kerb.bat
+apps/home/Engines/engine_17defects.bat
+
+Reports/
+Batches/
+
+# Django specific files
+migrations/
+*.jpg
+
+#mongo backup
+mongo_backups/
+
+#ffmpeg
+apps/home/Tools/ffmpeg.exe
+labelme.exe
+
+# Team black
+black/
+application/uploads/*
+Report_Scheduler/
+roads.csv
+
+team_black_y3s1/assets/test

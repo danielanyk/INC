@@ -1,0 +1,38 @@
+{
+  "roles": [
+    { "RoleID": 1, "Role": "Admin" },
+    { "RoleID": 2, "Role": "Inspector" }
+  ],
+  "users": [
+    { "UserID": 1, "RoleID": 1, "Password": "admin123" },
+    { "UserID": 2, "RoleID": 2, "Password": "inspector123" }
+  ],
+  "user_details": [
+    { "UserID": 1, "FirstName": "Alice", "LastName": "Tan" },
+    { "UserID": 2, "FirstName": "Ben", "LastName": "Lim" }
+  ],
+  "defect_types": [
+    { "DefectTypeID": 1, "DefectName": "Missing Signage (Keep Left Sign)" },
+    { "DefectTypeID": 2, "DefectName": "Missing Signage (Pedestrian Crossing Sign)" },
+    { "DefectTypeID": 3, "DefectName": "Missing Signage (Stop Sign)" },
+    { "DefectTypeID": 4, "DefectName": "Alligator Crack" },
+    { "DefectTypeID": 5, "DefectName": "Arrow" },
+    { "DefectTypeID": 6, "DefectName": "Block Crack" },
+    { "DefectTypeID": 7, "DefectName": "Damaged Base Crack" },
+    { "DefectTypeID": 8, "DefectName": "Localise Surface Defect" },
+    { "DefectTypeID": 9, "DefectName": "Multi Crack" },
+    { "DefectTypeID": 10, "DefectName": "Parallel Lines" },
+    { "DefectTypeID": 11, "DefectName": "Peel Off With Cracks" },
+    { "DefectTypeID": 12, "DefectName": "Peeling Off Premix" },
+    { "DefectTypeID": 13, "DefectName": "Pothole With Crack" },
+    { "DefectTypeID": 14, "DefectName": "Rigid Pavement Crack" },
+    { "DefectTypeID": 15, "DefectName": "Single Crack" },
+    { "DefectTypeID": 16, "DefectName": "Transverse Crack" },
+    { "DefectTypeID": 17, "DefectName": "Wearing Course Peeling Off" },
+    { "DefectTypeID": 18, "DefectName": "White Lane" },
+    { "DefectTypeID": 19, "DefectName": "Yellow Lane" },
+    { "DefectTypeID": 20, "DefectName": "Raveling" },
+    { "DefectTypeID": 21, "DefectName": "Damaged Kerb" },
+    { "DefectTypeID": 22, "DefectName": "Paint Spillage" }
+  ]
+}

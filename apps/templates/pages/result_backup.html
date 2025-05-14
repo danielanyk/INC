@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Processing Results</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background-color: #121212;
+        color: #e0e0e0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        letter-spacing: 0.05em;
+      }
+      .container {
+        width: 90%;
+        max-width: 800px;
+        margin: 20px auto;
+        text-align: center;
+      }
+      h1 {
+        font-size: 3em;
+        margin: 20px 0;
+        letter-spacing: 0.05em;
+      }
+      h2 {
+        font-size: 2em;
+        letter-spacing: 0.05em;
+        margin-bottom: 20px;
+      }
+      h3 {
+        font-size: 1.5em;
+        letter-spacing: 0.05em;
+        margin: 10px 0;
+      }
+      p {
+        font-size: 1em;
+        margin: 5px 0;
+        color: #bbbbbb;
+      }
+      .missing-signs {
+        background: #1e1e1e;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      .no-missing-signs {
+        color: #4caf50;
+        font-size: 1.5em;
+        margin: 20px 0;
+      }
+      img {
+        margin-top: 10px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      }
+      video {
+        width: 100%;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Processing Results</h1>
+
+      <!-- Video Display -->
+      <div class="video-container">
+        <video controls>
+          <source
+            src="{{ url_for('home_blueprint.serve_output', unique_folder=output_video.split('/')[0], filename=output_video.split('/')[-1]) }}"
+            type="video/mp4"
+          />
+          Your browser does not support the video tag.
+        </video>
+      <!-- <video controls>
+          <source
+            src="{{ url_for('static', filename='outputs/' +output_video) }}"
+            type="video/mp4"
+          />
+          Your browser does not support the video tag.
+        </video> -->
+      <!-- </div> -->
+
+      <!-- Missing Signs Count -->
+      <h2>⚠️ Missing Signs: {{ missing_count }}</h2>
+
+      {% if missing_count > 0 %}
+      <!-- Display Missing Signs -->
+      {% for sign in missing_signs %}
+      <div class="missing-signs">
+        <h3>🚧 {{ sign.missing_sign_type }}</h3>
+        <p><strong>Marking Type:</strong> {{ sign.marking_type }}</p>
+        <img
+          src="{{ '/' + '/'.join(sign.frame_path.replace('\\', '/').split('/')[-4:]) }}"
+          alt="First Frame of Missing Sign"
+          width="640"
+        />
+      </div>
+      {% endfor %} {% else %}
+      <!-- No Missing Signs -->
+      <div class="no-missing-signs">
+        🎉 Great news! No missing signage was detected.
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>

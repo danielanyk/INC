@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Main Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="dashboard.css">
+</head>
+<body>
+    <h1>Analysis for Road Defects</h1>
+    <!-- <div id="testing"></div> -->
+    <div class="wrapper">
+        <h2 class='topSection'>Latest Batch Update</h2>
+        <div class="top">
+            <div id="batch-status" class="batch-status"></div>
+            <div id="defect-count" class="defect-count"></div>
+
+        </div>
+        <div class="bottom">
+            <h2>Filter Options</h2>
+            <div class="filters">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="batch-select">Batch:</label>
+                        <select id="batch-select" onchange="updateGraph('b')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="batch-tags"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="town-select">Area:</label>
+                        <select id="town-select" onchange="updateGraph('t')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="town-tags"></div>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="year-select">Year:</label>
+                        <select id="year-select" onchange="updateGraph('y')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="year-tags"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="month-select">Month:</label>
+                        <select id="month-select" onchange="updateGraph('m')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="month-tags"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="day-select">Day:</label>
+                        <select id="day-select" onchange="updateGraph('d')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="day-tags"></div>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="defect-select">Defect:</label>
+                        <select id="defect-select" onchange="updateGraph('defect')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="defect-tags"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="type-select">Defect Type:</label>
+                        <select id="type-select" onchange="updateGraph('type')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="type-tags"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label for="severity-select">Severity:</label>
+                        <select id="severity-select" onchange="updateGraph('severity')">
+                            <option value="Nil">Nil</option>
+                        </select>
+                        <div id="severity-tags"></div>
+                    </div>
+                </div>
+            </div>
+            <button class="clear-filters-button" onclick="clearFilters()">Clear Filters</button>
+        </div>
+    </div>
+    
+    <div id="noRecords"></div>
+
+    <div class="graph-container">
+        <div class="graph" id="town-graph"></div>
+        <div class="graph" id="pie-chart-defect"></div>
+    </div>
+    <div class="graph-container">
+        <div class="graph" id="severity-bar-chart"></div>
+        <div class="graph" id="road-type-bar-chart"></div>
+    </div>
+
+    <div id="test"></div>
+    <div id="error"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const batchStatusClass = batchStatus ? 'batch-success' : 'batch-failed';
+            const batchStatusText = batchStatus ? 'Successful' : 'Pending';
+
+            document.getElementById('batch-status').className = `batch-status ${batchStatusClass}`;
+            document.getElementById('batch-status').innerHTML = `<h2>Batch Status: ${batchStatusText}</h2>`;
+            document.getElementById('defect-count').innerHTML = `<h2>Total Defect Count: ${totalDefectCount}</h2>`;
+        });
+    </script>
+
+
+    
+    <script src="dashboard.js"></script>
+</body>
+</html>

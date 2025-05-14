@@ -1,0 +1,915 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+
+<main>
+  <script src="/static/assets/buttonlisten.js"></script>
+  <script src="/static/assets/donut.js"></script>
+  <script src="/static/assets/upload.js"></script>
+  <script src="/static/assets/batchTable.js"></script>
+  <!-- <script src="/static/assets/bundle.js"></script> -->
+  <script src="/static/assets/imageTable.js"></script>
+  <script type="text/javascript" src="https://www.dropbox.com/static/api/2/dropins.js" id="dropboxjs" data-app-key="cdfpmgml5cfi57b"></script>
+
+  <script>
+
+      var totalF = 0;
+      var framesProcessed = 0;
+      var Fpath = "";
+      document.addEventListener('DOMContentLoaded', function() {
+        totalF = {{ totalFrames }};
+        framesProcessed = {{ framesProcessed }};
+        updateElements();
+        updateS();
+      });
+      function updateElements() {
+        var multiplier=0
+        var count=0
+        if (document.getElementById('toggle1').checked==true){
+          multiplier+=6
+          count+=1
+        }
+        if (document.getElementById('toggle2').checked==true){
+          multiplier+=13
+          count+=1
+        }
+        if (document.getElementById('toggle3').checked==true){
+          multiplier+=33
+          count+=1
+        }
+        if (document.getElementById('toggle4').checked==true){
+          multiplier+=5
+          count+=1
+        }
+        if (count>1){
+          multiplier+=5.5
+        }
+        // if (count==3){
+        //   multiplier+=10
+        // }
+        // if (count==4){
+        //   multiplier+=15
+        // }
+        if (document.getElementById('loading-status').textContent!='completed'){
+        // Convert total frames to HH:MM:SS format
+        const hours = Math.floor(totalF / 3600).toString().padStart(2, '0');
+        const minutes = Math.floor((totalF % 3600) / 60).toString().padStart(2, '0');
+        const seconds = (totalF % 60).toString().padStart(2, '0');
+        document.getElementById('videoLength').textContent = `${hours}:${minutes}:${seconds}`;
+
+        // Calculate remaining processing time in HH:MM:SS format
+        const totalF2 = (totalF - framesProcessed) * multiplier;
+        const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
+        const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
+        const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
+        document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
+
+        if (totalF==0) {
+            document.getElementById('frame-info').textContent = `0`;
+          }
+          else{
+            document.getElementById('frame-info').textContent = `${framesProcessed}/${totalF}`;
+          }
+        }
+        else{
+          document.getElementById('processingHeader').textContent = "Time Taken To Process";
+          document.getElementById('frame-header').textContent = "Defect Frames Out Of Total Frames";
+          const totalF2 = (totalF) * multiplier;
+          const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
+          const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
+          const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
+          document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
+          var b = document.getElementById("defect-table").rows.length -1;
+          if (b<=0) {
+            b=0
+          }else if (b>totalF) {
+            b=totalF
+          }
+          if (totalF==0) {
+            document.getElementById('frame-info').textContent = `0`;
+          }
+          else{
+            document.getElementById('frame-info').textContent = `${b}/${totalF}`;
+          }
+        }
+      }
+
+      // function updateElements() {
+      //   if (document.getElementById('loading-status').textContent!='completed'){
+      //   // Convert total frames to HH:MM:SS format
+      //   const hours = Math.floor(totalF / 3600).toString().padStart(2, '0');
+      //   const minutes = Math.floor((totalF % 3600) / 60).toString().padStart(2, '0');
+      //   const seconds = (totalF % 60).toString().padStart(2, '0');
+      //   document.getElementById('videoLength').textContent = `${hours}:${minutes}:${seconds}`;
+
+      //   // Calculate remaining processing time in HH:MM:SS format
+      //   const totalF2 = (totalF - framesProcessed) * 10;
+      //   const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
+      //   const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
+      //   const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
+      //   document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
+
+      //   if (totalF==0) {
+      //       document.getElementById('frame-info').textContent = `0`;
+      //     }
+      //     else{
+      //       document.getElementById('frame-info').textContent = `${framesProcessed}/${totalF}`;
+      //     }
+      //   }
+      //   else{
+      //     document.getElementById('processingHeader').textContent = "Time Taken To Process";
+      //     document.getElementById('frame-header').textContent = "Defect Frames Out Of Total Frames";
+      //     const totalF2 = (totalF) * 10;
+      //     const hours2 = Math.floor(totalF2 / 3600).toString().padStart(2, '0');
+      //     const minutes2 = Math.floor((totalF2 % 3600) / 60).toString().padStart(2, '0');
+      //     const seconds2 = (totalF2 % 60).toString().padStart(2, '0');
+      //     document.getElementById('processingTime').textContent = `${hours2}:${minutes2}:${seconds2}`;
+      //     var b = document.getElementById("defect-table").rows.length -1;
+      //     if (b<=0) {
+      //       b=0
+      //     }else if (b>totalF) {
+      //       b=totalF
+      //     }
+      //     if (totalF==0) {
+      //       document.getElementById('frame-info').textContent = `0`;
+      //     }
+      //     else{
+      //       document.getElementById('frame-info').textContent = `${b}/${totalF}`;
+      //     }
+      //   }
+      // }
+
+      var bID={{batchID}};
+      function updateS(){
+        fetch(`/batchStatus/${bID}`)
+          .then(response => response.json())
+          .then(data => {
+            framesProcessed = data.framesProcessed;
+            if (totalF==0) {
+              var percent = 0
+            }
+            else{
+              var percent = (data.framesProcessed / totalF * 100).toFixed(1);
+            }
+            document.getElementById('loading-status').textContent = data.status;
+            document.getElementById('loading-percent').textContent = percent + '%';
+            document.getElementById('loading-bar').style.width = percent + '%';
+            updateElements();
+          })
+          .catch(error => console.error('Error:', error));
+      }
+
+      setInterval(updateS, 1000);
+   
+
+      
+
+
+    </script>
+      <div id="modal"
+         class="hidden fixed top-0 left-0 z-80 
+                w-screen h-screen bg-black/70 flex 
+                justify-center items-center">
+ 
+        <!-- The close button -->
+        <a class="fixed z-90 top-6 right-8 
+                  text-white text-5xl font-bold" 
+           href="javascript:void(0)"
+           onclick="closeModal()">
+              ×
+          </a>
+ 
+        <!-- A big image will be displayed here -->
+        <img id="modal-img"
+             class="max-w-[800px] max-h-[600px] object-cover"/>
+    </div>
+    <form id="download-form" action="/download" method="post">
+      <input type="hidden" id="folder-url" name="folder_url">
+    </form>  
+  <div class="px-4 pt-6">
+    <div class="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+
+      <!-- Main widget -->
+      <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800 h-full">
+        <div class="flex items-center justify-center w-full h-full">
+          <video id="video-player" class="hidden w-full h-full" controls></video>
+          <p id="upload-message" class="hidden mb-2 drop_zone text-sm text-gray-500 dark:text-gray-400"></p>
+          <label for="dropzone-file" id="dropzone"
+            class="flex flex-col items-center justify-center w-full h-full h-3/4 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+              <svg class="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+                fill="none" viewBox="0 0 20 16">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2">
+                </path>
+              </svg>
+              <p class="mb-2 drop_zone text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Folder, MP4, or JPG</p>
+            </div>
+            <input id="dropzone-file" type="file" accept=".mp4, .jpg, .jpeg, .png, .gif, .webm, .mov, .avi, .mkv" class="hidden">
+          </label>
+        </div>
+      </div>
+      <!--Tabs widget -->
+      <div class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+          <div class="flex justify-between mb-3">
+              <div class="flex justify-center items-center">
+                <h5 class="text-xl font-bold leading-none text-gray-900 dark:text-white pe-1">Defect AI Toggles</h5>  
+                <!-- <h5 class="text-xl font-bold leading-none text-gray-900 dark:text-white pe-1">Defects</h5> -->
+                </div>
+              </div>
+              <div class="toggle-group leading-none text-gray-900 dark:text-white pe-1">
+                <div class="toggle">
+                    <label for="toggle1">Raveling</label>
+                    <input type="checkbox" id="toggle1" checked>
+                </div>
+                
+                <div class="toggle">
+                    <label for="toggle3">Kerb</label>
+                    <input type="checkbox" id="toggle3" checked>
+                </div>
+                <div class="toggle">
+                    <label for="toggle4">Paint Spillage</label>
+                    <input type="checkbox" id="toggle4" checked>
+                </div>
+                <div class="toggle">
+                  <label for="toggle2">Cracks and peeling</label>
+                  <input type="checkbox" id="toggle2" checked>
+              </div>
+              <div class="toggle">
+                <label for="toggle5">Drain</label>
+                <input type="checkbox" id="toggle5" checked>
+            </div>
+            <div class="toggle">
+              <label for="toggle6">Missing Signs</label>
+              <input type="checkbox" id="toggle6" checked>
+          </div>
+              </div>
+              <script src="/static/assets/toggleCheck.js"></script>
+            <div>
+              <button></button>
+            </div>
+        </div>
+              
+              
+              
+              
+                <!-- <div>
+
+                <button type="button" data-tooltip-target="data-tooltip" data-tooltip-placement="bottom" class="hidden sm:inline-flex items-center justify-center text-gray-500 w-8 h-8 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm">
+                  <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 18">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 1v11m0 0 4-4m-4 4L4 8m11 4v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3"/>
+          </svg><span class="sr-only">Download data</span>
+                </button>
+                <div id="data-tooltip" role="tooltip" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip dark:bg-gray-700">
+                    Download CSV
+                    <div class="tooltip-arrow" data-popper-arrow></div>
+                </div>
+              </div>
+          </div>
+        
+          <div>
+           Donut Chart
+          <div class="py-6" id="donut-chart"></div>
+        </div>
+      </div> -->
+    </div>
+
+    <div class="grid w-full grid-cols-1 gap-4 mt-4 xl:grid-cols-2 2xl:grid-cols-3">
+      <div
+        class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div>
+          <h3 class="text-lg font-normal text-gray-500 dark:text-gray-400">Total Video Length</h3>
+          <span id="videoLength" class="text-4xl font-bold text-gray-900 dark:text-white">0M</span>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-gray-500 dark:text-gray-400"
+          height="48">
+          <path
+            d="M12 12L7.72711 8.43926C7.09226 7.91022 6.77484 7.6457 6.54664 7.32144C6.34444 7.03413 6.19429 6.71354 6.10301 6.37428C6 5.99139 6 5.57819 6 4.7518V2M12 12L16.2729 8.43926C16.9077 7.91022 17.2252 7.6457 17.4534 7.32144C17.6556 7.03413 17.8057 6.71354 17.897 6.37428C18 5.99139 18 5.57819 18 4.7518V2M12 12L7.72711 15.5607C7.09226 16.0898 6.77484 16.3543 6.54664 16.6786C6.34444 16.9659 6.19429 17.2865 6.10301 17.6257C6 18.0086 6 18.4218 6 19.2482V22M12 12L16.2729 15.5607C16.9077 16.0898 17.2252 16.3543 17.4534 16.6786C17.6556 16.9659 17.8057 17.2865 17.897 17.6257C18 18.0086 18 18.4218 18 19.2482V22M4 2H20M4 22H20"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+      <div
+        class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div>
+          <h3 id="frame-header" class="text-lg font-normal text-gray-500 dark:text-gray-400">Number of Frames Processed</h3>
+          <span id="frame-info" class="text-4xl font-bold text-gray-900 dark:text-white">{0}</span>
+        </div>
+        <svg id='Layers_Back_24' height='48' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'
+          xmlns:xlink='http://www.w3.org/1999/xlink'>
+          <rect width='24' height='24' stroke='none' fill='#000000' opacity='0' />
+
+
+          <g transform="matrix(0.83 0 0 0.83 12 12)">
+            <g style="">
+              <g transform="matrix(1 0 0 1 -2.25 -2.25)">
+                <rect
+                  style="stroke: rgb(156,163,175); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;"
+                  x="-9" y="-9" rx="1.5" ry="1.5" width="18" height="18" />
+              </g>
+              <g transform="matrix(1 0 0 1 2.25 2.25)">
+                <path
+                  style="stroke: rgb(156,163,175); stroke-width: 1.5; stroke-dasharray: none; stroke-linecap: round; stroke-dashoffset: 0; stroke-linejoin: round; stroke-miterlimit: 4; fill: none; fill-rule: nonzero; opacity: 1;"
+                  transform=" translate(-14.25, -14.25)"
+                  d="M 21.75 5.25 C 22.57842712474619 5.25 23.25 5.921572875253809 23.25 6.75 L 23.25 21.75 C 23.25 22.57842712474619 22.57842712474619 23.25 21.75 23.25 L 6.75 23.25 C 5.92157287525381 23.25 5.25 22.57842712474619 5.25 21.75"
+                  stroke-linecap="round" />
+              </g>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div
+        class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div>
+          <h3 id=processingHeader class="text-lg font-normal text-gray-500 dark:text-gray-400">Estimated Time To Process</h3>
+          <span id=processingTime class="text-4xl font-bold text-gray-900 dark:text-white">0M</span>
+        </div>
+        <svg id='Timer_24' height='48' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'
+          xmlns:xlink='http://www.w3.org/1999/xlink'>
+          <rect width='24' height='24' stroke='none' fill='#000000' opacity='0' />
+
+
+          <g transform="matrix(0.83 0 0 0.83 12 12)">
+            <path
+              style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(156,163,175); fill-rule: nonzero; opacity: 1;"
+              transform=" translate(-12, -12)"
+              d="M 11 0 L 11 5 L 13 5 L 13 2.1875 C 18.0625 2.707031 22 6.789063 22 12 C 22 17.566406 17.566406 22 12 22 C 6.433594 22 2 17.566406 2 12 C 2 9.15625 3.085938 6.757813 5 4.9375 L 3.625 3.46875 C 1.335938 5.648438 0 8.640625 0 12 C 0 18.636719 5.363281 24 12 24 C 18.636719 24 24 18.636719 24 12 C 24 5.363281 18.636719 0 12 0 Z M 5.59375 5.59375 L 10.03125 12.3125 C 10.183594 13.265625 11.007813 14 12 14 C 13.101563 14 14 13.101563 14 12 C 14 11.007813 13.265625 10.183594 12.3125 10.03125 Z"
+              stroke-linecap="round" />
+          </g>
+        </svg>
+      </div>
+
+    </div>
+    <div class="grid w-full grid-cols-1 gap-4 mt-4 xl:grid-cols-2 2xl:grid-cols-3">
+      <div
+        class="flex items-center justify-center p-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <button type="button" data-modal-target="default-modal" data-modal-toggle="default-modal" id="start_video_process"
+          class="px-6 py-3.5 mx-4 h-full text-base font-medium text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+          <?xml version="1.0" ?>
+          <!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'><svg
+            height="32px" style="enable-background:new 0 0 24 32;" version="1.1" viewBox="0 0 24 32" width="24px"
+            class="w-4 h-4 text-white me-2" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink">
+            <g id="Layer_1" />
+            <g id="play">
+              <polygon points="0,0 24,16 0,32  " style="fill:#FFFFFF;" />
+            </g>
+          </svg>Start Processing
+
+        </button>
+        <button type="button" id="stopButton"
+          class="px-6 py-3.5 mx-4 h-full text-base font-medium text-white inline-flex items-center bg-red-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-red-300 rounded-lg text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800"
+          >
+          <?xml version="1.0" ?>
+          <!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.1//EN' 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'><svg
+            height="32px" style="enable-background:new 0 0 24 32;" version="1.1" viewBox="0 0 32 32" width="24px"
+            class="w-4 h-4 text-white me-2" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink">
+            <g id="Layer_1" />
+            <g id="play">
+              <polygon points="0,0 32,0 32,32 0,32" style="fill:#FFFFFF;" />
+            </g>
+          </svg>Stop Processing
+
+        </button>
+        <div class="toggle px-6 py-3.5 mx-4 h-full text-base font-medium text-white inline-flex items-center bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-green-300 rounded-lg text-center dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">
+          <label for="autotoggle">Autotoggle</label>
+          <input type="checkbox" id="autotoggle">
+      </div>
+        <!-- Main modal -->
+        <div id="default-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+          <div class="relative p-4 w-full max-w-2xl max-h-full">
+              <!-- Modal content -->
+              <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+                  <!-- Modal header -->
+                  <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                      <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                          Change Inspection Date
+                      </h3>
+                      <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="default-modal">
+                          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                          </svg>
+                          <span class="sr-only">Close modal</span>
+                      </button>
+                  </div>
+                  <!-- Modal body -->
+                  <div class="p-4 md:p-5 space-y-4">
+                      <form id = "insp_date_selection">
+                          <div>
+                            <label for="insp_date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Would you like to change the inspection date? The default date is today. <br>Please leave it blank if you prefer the default selection.</label>
+                          <div class="relative max-w-sm">
+                          <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                            <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z"/>
+                            </svg>
+                          </div>
+                              <input datepicker datepicker-autohide datepicker-format="d/m/yyyy" type="text" id="insp_date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Select date">
+                            </div>
+                          </div>
+                      </form>
+                  </div>
+                  <!-- Modal footer -->
+                  <div class="flex items-center p-4 md:p-5 border-t border-gray-200 rounded-b dark:border-gray-600">
+                      <button data-modal-hide="default-modal" type="button" onclick="handleConfirmClick()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Confirm</button>
+                      <button type="button" onclick="handleClearAll()" class="py-2.5 px-5 ms-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">Clear</button>
+                  </div>
+              </div>
+          </div>
+        </div>
+      <!-- dropbox modal DONT DELETE plz-->
+      <div id="default-modal2" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+        <div class="relative p-4 w-full max-w-2xl max-h-full">
+          <!-- Modal content -->
+          <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+              <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                Dropbox Setup
+              </h3>
+              <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="default-modal2">
+                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                </svg>
+                <span class="sr-only">Close modal</span>
+              </button>
+            </div>
+            <!-- Modal body -->
+            <div class="p-4 md:p-5 space-y-4">
+              <form>
+                <div>
+                  <label for="dropbox_auth_key" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Dropbox Auth Key</label>
+                  <input type="text" id="dropbox_auth_key" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter your Dropbox auth key"/>
+                </div>
+              </form>
+            </div>
+            <!-- Modal footer -->
+            <div class="flex items-center p-4 md:p-5 border-t border-gray-200 rounded-b dark:border-gray-600">
+              <button data-modal-hide="default-modal2" type="button" onclick="handleConfirmClick()" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Confirm</button>
+              <button type="button" onclick="handleClearAll()" class="py-2.5 px-5 ms-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div
+        class="p-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800 h-full">
+        <div class="flex justify-between mb-1">
+          <span id="loading-status" class="text-base font-medium text-blue-700 dark:text-white">Waiting</span>
+          <span id="loading-percent" class="text-sm font-medium text-blue-700 dark:text-white">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+          <div id="loading-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+
+      </div>
+    </div>
+    <div
+      class="p-4 bg-white border mt-4 border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+      <!-- Card header -->
+      <div class="items-center justify-between lg:flex">
+        <div class="mb-4 lg:mb-0">
+          <h3 class="mb-2 text-xl font-bold text-gray-900 dark:text-white">Detected Defects</h3>
+        </div>
+        <div class="items-center sm:flex">
+          <div class="flex items-center">
+            <!-- <button id="dropdownDefault" data-dropdown-toggle="dropdownType"
+              class="mb-4 sm:mb-0 mr-4 inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700"
+              type="button">
+              Filter by Type
+              <svg class="w-4 h-4 ml-2" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button> -->
+            <!-- Dropdown menu -->
+            <!-- <div id="dropdownType" class="z-10 hidden w-56 p-3 bg-white rounded-lg shadow dark:bg-gray-700">
+              <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
+                Category
+              </h6>
+              <ul class="space-y-2 text-sm" aria-labelledby="dropdownDefault">
+                <li class="flex items-center">
+                  <input id="raveling" type="checkbox" value=""
+                    class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                  <label for="raveling" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Raveling
+                  </label>
+                </li>
+
+                <li class="flex items-center">
+                  <input id="curb" type="checkbox" value="" checked
+                    class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                  <label for="curb" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Damaged Curb
+                  </label>
+                </li>
+
+                <li class="flex items-center">
+                  <input id="paint" type="checkbox" value=""
+                    class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                  <label for="paint" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Paint Spillage
+                  </label>
+                </li>
+
+                <li class="flex items-center">
+                  <input id="others" type="checkbox" value="" checked
+                    class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                  <label for="others" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Others
+                  </label>
+                </li>
+              </ul>
+            </div> -->
+            <button id="dropdownDefault" data-dropdown-toggle="dropdown"
+              class="mb-4 sm:mb-0 mr-4 inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700"
+              type="button">
+              Filter
+              <svg class="w-4 h-4 ml-2" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <div id="dropdown" class="z-10 hidden w-30 p-3 bg-white rounded-lg shadow dark:bg-gray-700 flex flex-col items-center">
+              <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white text-center">
+                Filter by
+              </h6>
+              <ul class="space-y-2 text-sm dark:text-white" aria-labelledby="dropdownDefault">
+                <li class="flex items-center">
+                  <select id="imagePathFilter" class="w-full h-10 text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700">
+                    <option disabled selected value="" class="dark:text-white">Video</option>
+                  </select>
+                </li>
+
+                <li class="flex items-center">
+                    <button id="dropdownDefault2" data-dropdown-toggle="dropdown2"
+                      class="w-full h-10 mb-4 sm:mb-0 inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700"
+                      type="button">
+                      Defects
+                      <svg class="w-4 h-4 aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg" style="margin-left: 82%;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </button>
+                    <div id="dropdown2" class="z-10 hidden w-30 p-3 bg-white rounded-lg shadow dark:bg-gray-700 flex flex-col items-center">
+                      <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white" >Filter by</h6>
+                      <ul class="space-y-2 text-sm">
+                        <li class="flex items-center">
+                          <input id="alligator-crack" type="checkbox" value="alligator-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="alligator-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Alligator Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="arrow" type="checkbox" value="arrow" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="arrow" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Arrow</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="block-crack" type="checkbox" value="block-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="block-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Block Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="damaged-base-crack" type="checkbox" value="damaged-base-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="damaged-base-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Damaged Base Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="localise-surface-defect" type="checkbox" value="localise-surface-defect" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="localise-surface-defect" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Localise Surface Defect</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="multi-crack" type="checkbox" value="multi-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="multi-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Multi Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="parallel-lines" type="checkbox" value="parallel-lines" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="parallel-lines" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Parallel Lines</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="peel-off-with-cracks" type="checkbox" value="peel-off-with-cracks" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="peel-off-with-cracks" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Peel Off With Cracks</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="peeling-off-premix" type="checkbox" value="peeling-off-premix" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="peeling-off-premix" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Peeling Off Premix</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="pothole-with-crack" type="checkbox" value="pothole-with-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="pothole-with-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Pothole With Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="rigid-pavement-crack" type="checkbox" value="rigid-pavement-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="rigid-pavement-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Rigid Pavement Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="single-crack" type="checkbox" value="single-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="single-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Single Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="transverse-crack" type="checkbox" value="transverse-crack" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="transverse-crack" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Transverse Crack</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="wearing-course-peeling-off" type="checkbox" value="wearing-course-peeling-off" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="wearing-course-peeling-off" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Wearing Course Peeling Off</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="white-lane" type="checkbox" value="white-lane" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="white-lane" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >White Lane</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="yellow-lane" type="checkbox" value="yellow-lane" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="yellow-lane" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Yellow Lane</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="raveling" type="checkbox" value="raveling" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="raveling" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Raveling</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="faded-kerb" type="checkbox" value="faded-kerb" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="faded-kerb" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Faded Kerb</label>
+                        </li>
+                        <li class="flex items-center">
+                          <input id="paint-spillage" type="checkbox" value="paint-spillage" class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 focus:ring-2">
+                          <label for="paint-spillage" class="ml-2 text-sm font-medium text-gray-900 dark:text-white" >Paint Spillage</label>
+                        </li>
+                      </ul>
+                    </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Table -->
+      <div class="flex flex-col mt-6">
+        <div class="overflow-x-auto rounded-lg">
+          <div class="inline-block min-w-full align-middle">
+            <div class="overflow-hidden shadow sm:rounded-lg">
+              <table id="defect-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th scope="col"
+                      class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                      Image Path
+                    </th>
+                    <th scope="col"
+                      class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                      Location
+                    </th>
+                    <th scope="col"
+                      class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                      Defect(s)
+                    </th>
+                    <th scope="col"
+                      class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                      View Image
+                    </th>
+                    <th scope="col"
+                      class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                      View Report
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white imagetbody dark:bg-gray-800">
+                  <tr></tr>
+                  
+                </tbody>
+                
+              </table>
+            
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Card Footer -->
+      <div class="flex items-center justify-between pt-3 sm:pt-6">
+        <div class="flex-shrink-0">
+          <a href="#"
+            class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">
+            Add Image +
+          </a>
+        </div>
+      </div>
+    </div>
+    <div
+    class="p-4 bg-white border mt-4 border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+    <!-- Card header -->
+    <div class="items-center justify-between lg:flex">
+      <div class="mb-4 lg:mb-0">
+        <h3 class="mb-2 text-xl font-bold text-gray-900 dark:text-white">Batches</h3>
+        <span class="text-base font-normal text-gray-500 dark:text-gray-400">This is a list of previous batches</span>
+      </div>
+      <div class="items-center sm:flex">
+        <div class="flex relative">
+          <div class="pl-3 absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+              fill="none" viewBox="0 0 20 20">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"></path>
+            </svg>
+          </div>
+          <input type="text" id="table-search"
+            class="mr-4 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500 datepicker-input"
+            placeholder="Search for batch">
+        </div>
+        <div class="flex items-center">
+
+          <button id="dropdownDefault" data-dropdown-toggle="dropdown"
+            class="mb-4 sm:mb-0 mr-4 inline-flex items-center text-gray-900 bg-white border border-gray-300 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-4 py-2.5 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700"
+            type="button">
+            Filter by Status
+            <svg class="w-4 h-4 ml-2" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <!-- Dropdown menu -->
+          <div id="dropdown" class="z-10 hidden w-56 p-3 bg-white rounded-lg shadow dark:bg-gray-700">
+            <h6 class="mb-3 text-sm font-medium text-gray-900 dark:text-white">
+              Category
+            </h6>
+            <ul class="space-y-2 text-sm" aria-labelledby="dropdownDefault">
+              <li class="flex items-center">
+                <input id="apple" type="checkbox" value=""
+                  class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                <label for="apple" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Completed (56)
+                </label>
+              </li>
+
+              <li class="flex items-center">
+                <input id="fitbit" type="checkbox" value="" checked
+                  class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                <label for="fitbit" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Error (2)
+                </label>
+              </li>
+
+              <li class="flex items-center">
+                <input id="dell" type="checkbox" value=""
+                  class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                <label for="dell" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  In progress (1)
+                </label>
+              </li>
+
+              <li class="flex items-center">
+                <input id="asus" type="checkbox" value="" checked
+                  class="w-4 h-4 bg-gray-100 border-gray-300 rounded text-primary-600 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500" />
+
+                <label for="asus" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Paused (97)
+                </label>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div date-rangepicker class="flex items-center space-x-4">
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M5.25 12a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H6a.75.75 0 01-.75-.75V12zM6 13.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V14a.75.75 0 00-.75-.75H6zM7.25 12a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H8a.75.75 0 01-.75-.75V12zM8 13.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V14a.75.75 0 00-.75-.75H8zM9.25 10a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H10a.75.75 0 01-.75-.75V10zM10 11.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V12a.75.75 0 00-.75-.75H10zM9.25 14a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H10a.75.75 0 01-.75-.75V14zM12 9.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V10a.75.75 0 00-.75-.75H12zM11.25 12a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H12a.75.75 0 01-.75-.75V12zM12 13.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V14a.75.75 0 00-.75-.75H12zM13.25 10a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H14a.75.75 0 01-.75-.75V10zM14 11.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V12a.75.75 0 00-.75-.75H14z">
+                </path>
+                <path clip-rule="evenodd" fill-rule="evenodd"
+                  d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z">
+                </path>
+              </svg>
+            </div>
+            <input name="start" type="text"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+              placeholder="From">
+          </div>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path
+                  d="M5.25 12a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H6a.75.75 0 01-.75-.75V12zM6 13.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V14a.75.75 0 00-.75-.75H6zM7.25 12a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H8a.75.75 0 01-.75-.75V12zM8 13.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V14a.75.75 0 00-.75-.75H8zM9.25 10a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H10a.75.75 0 01-.75-.75V10zM10 11.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V12a.75.75 0 00-.75-.75H10zM9.25 14a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H10a.75.75 0 01-.75-.75V14zM12 9.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V10a.75.75 0 00-.75-.75H12zM11.25 12a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H12a.75.75 0 01-.75-.75V12zM12 13.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V14a.75.75 0 00-.75-.75H12zM13.25 10a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75H14a.75.75 0 01-.75-.75V10zM14 11.25a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75h.01a.75.75 0 00.75-.75V12a.75.75 0 00-.75-.75H14z">
+                </path>
+                <path clip-rule="evenodd" fill-rule="evenodd"
+                  d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z">
+                </path>
+              </svg>
+            </div>
+            <input name="end" type="text"
+              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 p-2.5  dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+              placeholder="To">
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Table -->
+    <div class="flex flex-col mt-6">
+      <div class="overflow-x-auto rounded-lg">
+        <div class="inline-block min-w-full align-middle">
+          <div class="overflow-hidden shadow sm:rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th scope="col"
+                    class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                    User
+                  </th>
+                  <th scope="col"
+                    class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                    Date & Time
+                  </th>
+                  <th scope="col"
+                    class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                    Number of Frames
+                  </th>
+                  <th scope="col"
+                    class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                    Video Name/Folder Name
+                  </th>
+                  <th scope="col"
+                    class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                    View in Dashboard
+                  </th>
+                  <th scope="col"
+                    class="p-4 text-xs font-medium tracking-wider text-left text-gray-500 uppercase dark:text-white">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white batchtbody dark:bg-gray-800">
+                <tr></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card Footer -->
+    <div class="flex items-center justify-between pt-3 sm:pt-6">
+      <div>
+        <button
+          class="inline-flex items-center p-2 text-sm font-medium text-center text-gray-500 rounded-lg hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          type="button" data-dropdown-toggle="transactions-dropdown">Last 7 days <svg class="w-4 h-4 ml-2" fill="none"
+            stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg></button>
+        <!-- Dropdown menu -->
+        <div
+          class="z-50 hidden my-4 text-base list-none bg-white divide-y divide-gray-100 rounded shadow dark:bg-gray-700 dark:divide-gray-600"
+          id="transactions-dropdown">
+          <div class="px-4 py-3" role="none">
+            <p class="text-sm font-medium text-gray-900 truncate dark:text-white" role="none">
+              Sep 16, 2024 - Sep 22, 2024
+            </p>
+          </div>
+          <ul class="py-1" role="none">
+            <li>
+              <a href="#"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+                role="menuitem">Yesterday</a>
+            </li>
+            <li>
+              <a href="#"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+                role="menuitem">Today</a>
+            </li>
+            <li>
+              <a href="#"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+                role="menuitem">Last 7 days</a>
+            </li>
+            <li>
+              <a href="#"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+                role="menuitem">Last 30 days</a>
+            </li>
+            <li>
+              <a href="#"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+                role="menuitem">Last 90 days</a>
+            </li>
+          </ul>
+          <div class="py-1" role="none">
+            <a href="#"
+              class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-600 dark:hover:text-white"
+              role="menuitem">Custom...</a>
+          </div>
+        </div>
+      </div>
+      <div class="flex-shrink-0">
+        <a href="/"
+          class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">
+          Add Batch +
+        </a>
+      </div>
+    </div>
+  </div>
+  </div>
+</main>
+{% endblock content %}

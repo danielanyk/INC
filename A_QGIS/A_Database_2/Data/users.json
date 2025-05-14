@@ -1,0 +1,9 @@
+[{
+  "_id": {
+    "$oid": "66aac523004982abfcf19eeb"
+  },
+  "username": "admin",
+  "name": "Lee Hong Yi",
+  "password_hash": "pbkdf2:sha256:260000$d5IFeAqeXpsLQsDF$6d2cc7203f6f44b4419ba2eb36c64977e8ae36d5f12d13daf4f54edef9a82916",
+  "perm": "Admin"
+}]

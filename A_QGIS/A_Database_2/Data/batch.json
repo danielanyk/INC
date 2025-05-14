@@ -1,0 +1,39 @@
+[{
+  "_id": {
+    "$oid": "66aac55f004982abfcf19eec"
+  },
+  "batchID": 1,
+  "batchPath": "c:\\Users\\leeho\\OneDrive\\A-SCHOOL MATERIAL\\polytechnic\\2024_S1\\AAA_ST1509\\Videos\\mini_batch_8",
+  "userID": 1,
+  "batchStartProcessing": "01 Aug 2024, 07:14:39",
+  "batchFinishProcessing": "-",
+  "status": "completed",
+  "totalFrames": 488,
+  "framesProcessed": 488
+},
+{
+  "_id": {
+    "$oid": "66aae699004982abfcf1ae3e"
+  },
+  "batchID": 2,
+  "batchPath": "c:\\Users\\leeho\\OneDrive\\A-SCHOOL MATERIAL\\polytechnic\\2024_S1\\AAA_ST1509\\Videos\\mini_batch_2",
+  "userID": 1,
+  "batchStartProcessing": "01 Aug 2024, 09:36:25",
+  "batchFinishProcessing": "-",
+  "status": "completed",
+  "totalFrames": 74,
+  "framesProcessed": 74
+},
+{
+  "_id": {
+    "$oid": "66aaee145b887ed99d4f2b77"
+  },
+  "batchID": 3,
+  "batchPath": "c:\\Users\\leeho\\OneDrive\\A-SCHOOL MATERIAL\\polytechnic\\2024_S1\\AAA_ST1509\\Videos\\20201005_111741_NF.mp4",
+  "userID": 1,
+  "batchStartProcessing": "01 Aug 2024, 10:08:20",
+  "batchFinishProcessing": "-",
+  "status": "completed",
+  "totalFrames": 60,
+  "framesProcessed": 60
+}]
