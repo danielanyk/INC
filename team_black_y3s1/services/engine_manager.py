@@ -53,6 +53,12 @@ class EngineManager:
             "class_ids": [4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19],
             "fusion_weights": [4, 1]
         },
+        "drainage": {
+            "type": "yolo",
+            "weights": "models/B.pt",  # Adjust to actual path
+            "classes": ["Drainage","Drainage"],
+            "class_ids": [23,23],  # Use a unique DefectTypeID
+        },
     }
 
     def __init__(self):
@@ -132,7 +138,7 @@ class EngineManager:
             )
             id_to_label = dict(zip(cfg['class_ids'], cfg['classes']))
             labels = [id_to_label.get(int(cid), f"Unknown({cid})") for cid in class_ids]
-            print(detections.xyxy.tolist(), detections.confidence.tolist(), class_ids)
+            # print(detections.xyxy.tolist(), detections.confidence.tolist(), class_ids)
             return {
                 "output_lbl": labels,
                 "xyxy": detections.xyxy.tolist(),

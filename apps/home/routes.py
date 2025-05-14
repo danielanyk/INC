@@ -1456,3 +1456,42 @@ def serve_batch_file(folder, filename):
     full_folder_path = os.path.join(VIDEO_FOLDER, safe_folder)
     
     return send_from_directory(full_folder_path, filename)
+
+REPORTS_DIR = r"C:\Users\DanielYeoh\Downloads\9251-traffic-1\team_black_y3s1\reports"
+
+@blueprint.route("/list-reports")
+def list_reports():
+    folder = request.args.get("folder")
+    page = int(request.args.get("page", 1))
+    per_page = 10
+
+    if folder:
+        folder_path = os.path.join(REPORTS_DIR, folder)
+        if not os.path.exists(folder_path):
+            return jsonify({"error": "Folder not found"}), 404
+
+        files = sorted(os.listdir(folder_path))
+        total_pages = (len(files) + per_page - 1) // per_page
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_files = files[start:end]
+
+        return jsonify({
+            "folder": folder,
+            "files": paginated_files,
+            "page": page,
+            "total_pages": total_pages,
+        })
+
+    else:
+        folders = sorted([
+            f for f in os.listdir(REPORTS_DIR)
+            if os.path.isdir(os.path.join(REPORTS_DIR, f))
+        ])
+        return jsonify({"folders": folders})
+@blueprint.route('/reports/<folder>/<path:filename>')
+def serve_report_file(folder, filename):
+    safe_folder = secure_filename(folder)
+    report_folder = os.path.join(REPORTS_DIR, safe_folder)
+    
+    return send_from_directory(report_folder, filename, as_attachment=False)

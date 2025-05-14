@@ -4,7 +4,7 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 import uuid
 
-MONGO_URI = "mongodb://localhost:27018/"
+MONGO_URI = "mongodb://localhost:27017/"
 DB_NAME = "defect_db"
 
 with open("database/default_data.json", "r") as f:
@@ -53,6 +53,7 @@ class MongoDB:
                 self.defect_types = self.db["defect_types"]
                 self.reports = self.db["reports"]
                 self.images = self.db["images"]
+                self.user_details=self.db["user_details"]
 
                 print("[INFO] MongoDB connected successfully")
             except ConnectionFailure as e:
@@ -74,19 +75,19 @@ class MongoDB:
 
         print("[INFO] Default defect types initialized")
 
-    def insert_defect_image(self, image_path):
-        # Check if image already exists
-        existing = self.images.find_one({"ImagePath": image_path})
-        if existing:
-            return existing["_id"]
+    # def insert_defect_image(self, image_path):
+    #     # Check if image already exists
+    #     existing = self.images.find_one({"ImagePath": image_path})
+    #     if existing:
+    #         return existing["_id"]
 
-        image_id = str(uuid.uuid4())
-        self.images.insert_one({
-            "_id": image_id,
-            "ImagePath": image_path
-        })
-        print(f"[INFO] Inserted new image record for {image_path}")
-        return image_id
+    #     image_id = str(uuid.uuid4())
+    #     self.images.insert_one({
+    #         "_id": image_id,
+    #         "ImagePath": image_path
+    #     })
+    #     print(f"[INFO] Inserted new image record for {image_path}")
+    #     return image_id
 
 
     def insert_defect(
@@ -97,7 +98,7 @@ class MongoDB:
         latitude,
         longitude,
         severity,
-        image_id,
+        image_path,
     ):
         if not video_id or not defect_id or not defect_type_name:
             print("[ERROR] Missing required fields in insert_defect")
@@ -115,7 +116,7 @@ class MongoDB:
             "Latitude": latitude,
             "Longitude": longitude,
             "Severity": severity,
-            "ImageID": image_id,
+            "DefectImagePath": image_path,
             "DetectedDateTime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
         }
 
@@ -151,7 +152,7 @@ class MongoDB:
             "Status": "Unverified",
             "VerifiedAt": None,
             "latestmodificationtime":None,
-            "generationtime": None,
+            "generationtime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
             "reportpath":None,
             "tags":None,
             "measurement":None,
@@ -191,3 +192,43 @@ class MongoDB:
         except Exception as e:
             print(f"[WARN] MongoDB ping failed: {e}")
             self.close()
+    def user_exists_by_name(self, firstname, lastname):
+        if not firstname or not lastname:
+            print("[ERROR] Missing firstname or lastname in user_exists_by_name")
+            return False
+
+        user = self.users.find_one({"FirstName": firstname, "LastName": lastname})
+        if user:
+            print(f"[INFO] User found: {firstname} {lastname} (UserID: {user['UserID']})")
+            return True
+        else:
+            print(f"[INFO] User not found: {firstname} {lastname}")
+            return False
+
+    def get_pending_videos(self):
+        pending_videos = self.videos.find({"ProcessingStatus": "Pending"})
+        video_list = list(pending_videos)
+
+        if video_list:
+            print(f"[INFO] Found {len(video_list)} pending videos:")
+            for video in video_list:
+                print(json.dumps(video, default=str, indent=4))
+        else:
+            print("[INFO] No pending videos found.")
+
+        return video_list
+    def batch_insert_defects(self, defects):
+        if not defects:
+            print("[INFO] No defects to insert.")
+            return
+
+        self.defects.insert_many(defects, ordered=False)
+        print(f"[INFO] Inserted {len(defects)} defects")
+
+    def batch_insert_reports(self, reports):
+        if not reports:
+            print("[INFO] No reports to insert.")
+            return
+
+        self.reports.insert_many(reports, ordered=False)
+        print(f"[INFO] Inserted {len(reports)} reports")

@@ -11,6 +11,7 @@ from utils.onemap_service import reverse_geocode, generate_static_map
 from services.engine_manager import EngineManager   
 from utils.road_type_mapper import RoadTypeMapper
 from config import Config
+from datetime import datetime
 
 # class VideoBatchProcessor:
 #     def __init__(self, output_dir="reports"):
@@ -80,28 +81,20 @@ from config import Config
 #         return collection_name
 
 class VideoBatchProcessor:
-    def __init__(self, output_dir="reports"):
+    def __init__(self,db, output_dir="reports"):
         self.output_dir = output_dir
-        self.db = MongoDB()
+        self.db = db
         self.report_generator = ReportGenerator()
         self.engine_manager = EngineManager()  # Added EngineManager
         self.road_type_mapper = RoadTypeMapper(Config.ROAD_TYPE_MAPPER_PATH)
 
-    def process_folder(self, folder_path):
-        collection_name = os.path.basename(folder_path)
-        video_report_dir = os.path.join(
-            self.output_dir, f"{collection_name}_{uuid.uuid4()}"
-        )
-        os.makedirs(video_report_dir, exist_ok=True)
+    def process_video(self,video_id,video_path,folder_name,video_report_dir,file_name):
 
-        for file_name in os.listdir(folder_path):
-            if not file_name.lower().endswith((".mp4", ".avi", ".mov", ".mkv")):
-                continue
+        # for file_name in os.listdir(folder_path):
+        #     if not file_name.lower().endswith((".mp4", ".avi", ".mov", ".mkv")):
+        #         continue
 
-            video_path = os.path.join(folder_path, file_name)
-            video_id = self.db.insert_video(file_name, collection_name)
             print(f"[START] Processing video: {file_name}")
-
             processor = VideoProcessor()
             processor.process_video(video_path)
             missing_records = processor.detect_missing_signs()
@@ -109,8 +102,6 @@ class VideoBatchProcessor:
 
             # Extract GPS and timestamp for current video
             lat, lon, timestamp = extract_gps_and_timestamp(video_path)
-            
-
             if lat is not None and lon is not None:
                 road_type = self.road_type_mapper.get_road_type(lat, lon)
             else:
@@ -121,6 +112,7 @@ class VideoBatchProcessor:
                 record["longtitude"] = lon
                 record["latitude"] = lat
                 record["roadType"] = road_type
+
 
             video_capture = cv2.VideoCapture(video_path)
             engine_outputs = []
@@ -136,7 +128,7 @@ class VideoBatchProcessor:
                 if frame_idx % round(frame_interval) == 0:
                     tmp_img_path = os.path.join(
                         "static/defect_imgs",
-                        f"{collection_name}_{video_id}_frame{frame_idx}.jpg"
+                        f"{folder_name}_{video_id}_frame{frame_idx}.jpg"
                     )
                     cv2.imwrite(tmp_img_path, frame)
                     generated_images.append(tmp_img_path)
@@ -200,50 +192,132 @@ class VideoBatchProcessor:
                 except Exception as e:
                     print(f"[WARN] Could not delete image {img_path}: {e}")
 
+            processed_defects = []
+            processed_reports = []
+
+            defect_type_cache = {
+                dt["DefectName"]: dt["DefectTypeID"]
+                for dt in self.db.defect_types.find()
+            }
+
             for defect in combined_records:
                 defect_id = defect.get("defectId", str(uuid.uuid4()))
+                defect_type_name = defect.get("defectType")
+                defect_type_id = defect_type_cache.get(defect_type_name)
 
-                try:
-                    image_id = self.db.insert_defect_image(defect["imagePath"])
-
-                    self.db.insert_defect(
-                        video_id=video_id,
-                        defect_id=defect_id,
-                        defect_type_name=defect["defectType"],
-                        latitude=defect["latitude"],
-                        longitude=defect["longtitude"],
-                        severity=defect.get("severity", "Moderate"),
-                        image_id=image_id,
-                    )
-                except ValueError as e:
-                    print(f"[ERROR] {e}")
+                if not defect_type_id:
+                    print(f"[ERROR] Unknown defect type: {defect_type_name}")
                     continue
 
                 address = reverse_geocode(defect["latitude"], defect["longtitude"])
-                map_stream = generate_static_map(
-                    defect["latitude"], defect["longtitude"]
-                )
+                map_stream = generate_static_map(defect["latitude"], defect["longtitude"])
 
-                if address and map_stream:
-                    pdf_path = os.path.join(video_report_dir, f"{defect_id}.pdf")
-                    defect["DefectID"] = defect_id
-                    self.report_generator.generate_report(
-                        defect, address, map_stream, pdf_path
-                    )
-                    self.db.insert_report(defect_id)
-                else:
-                    print(
-                        f"[WARN] Report skipped for defect {defect_id} (address/map unavailable)"
-                    )
+                if not (address and map_stream):
+                    print(f"[WARN] Skipped defect {defect_id}: address/map unavailable")
+                    continue
+
+                pdf_path = os.path.join(video_report_dir, f"{defect_id}.pdf")
+                defect["DefectID"] = defect_id
+                self.report_generator.generate_report(defect, address, map_stream, pdf_path)
+
+                processed_defects.append({
+                    "DefectID": defect_id,
+                    "VideoID": video_id,
+                    "DefectTypeID": defect_type_id,
+                    "Latitude": defect["latitude"],
+                    "Longitude": defect["longtitude"],
+                    "Severity": defect.get("severity", "Moderate"),
+                    "ImagePath": defect["imagePath"],
+                    "DetectedDateTime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
+                })
+
+                processed_reports.append({
+                    "ReportID": str(uuid.uuid4()),
+                    "DefectID": defect_id,
+                    "RecommendationID": None,
+                    "RemarkId": None,
+                    "Status": "Unverified",
+                    "VerifiedAt": None,
+                    "latestmodificationtime": None,
+                    "generationtime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
+                    "reportpath": None,
+                    "tags": None,
+                    "measurement": None,
+                    "cause": None,
+                    "supervisorid": None,
+                    "via": None,
+                    "acknowledgement(check)": None,
+                    "inspectiontype(check)": None
+                })
+
+            # Insert into MongoDB using the class methods
+            self.db.batch_insert_defects(processed_defects)
+            self.db.batch_insert_reports(processed_reports)
 
             self.db.update_video_status(video_id, "Completed")
             print(f"[DONE] Finished processing video: {file_name}")
-        video_capture.release()
-        shutil.rmtree(folder_path)
-        print(f"[INFO] Upload folder removed: {folder_path}")
-        print(f"[SUCCESS] Finished batch processing for folder: {collection_name}")
-        return collection_name
+            video_capture.release()
+        # shutil.rmtree(folder_path)
+        # print(f"[INFO] Upload folder removed: {folder_path}")
+        # print(f"[SUCCESS] Finished batch processing for folder: {collection_name}")
+        # return collection_name
     
+    def process_pending_videos(self, main_folder):
+        pending_videos = list(self.db.videos.find({"ProcessingStatus": "Pending"}))
+
+        if not pending_videos:
+            print("[INFO] No pending videos to process.")
+            return
+
+        print(f"[INFO] Found {len(pending_videos)} pending videos to process.")
+
+        for video in pending_videos:
+            video_path = os.path.join(main_folder, video["FolderName"], video["VideoName"])  # Adjust base path!
+            if not os.path.exists(video_path):
+                print(f"[WARN] Video file missing: {video_path}")
+                self.db.update_video_status(video["VideoID"], "Removed")
+                continue
+
+            video_report_dir = os.path.join(self.output_dir, f"{video['FolderName']}")
+            os.makedirs(video_report_dir, exist_ok=True)
+
+            self.process_video(video["VideoID"], video_path, video["FolderName"], video_report_dir,video["VideoName"])
+
+    def process_folder(self, folder_path):
+        collection_name = os.path.basename(folder_path)
+        parts = collection_name.split("_")
+        if len(parts) < 2:
+            print("[ERROR] Invalid folder name format. Expected 'Firstname_Lastname_Date'")
+            return
+
+        firstname = parts[0]
+        lastname = parts[1]
+
+        if not self.db.user_exists_by_name(firstname, lastname):
+            print(f"[ERROR] User {firstname} {lastname} does not exist. Folder will not be processed.")
+            return
+
+        self.insert_videos_from_folder(folder_path)
+        print(f"[INFO] Inserted all videos in folder: {folder_path}")
+    
+    def insert_videos_from_folder(self, folder_path):
+        collection_name = os.path.basename(folder_path)
+
+        for file_name in os.listdir(folder_path):
+            if not file_name.lower().endswith((".mp4", ".avi", ".mov", ".mkv")):
+                continue
+
+            video_path = os.path.join(folder_path, file_name)
+
+            # Check if already inserted (prevent duplicate)
+            existing = self.db.videos.find_one({"VideoName": file_name, "FolderName": collection_name})
+            if existing:
+                print(f"[INFO] Video {file_name} already exists in DB, skipping insert.")
+                continue
+
+            video_id = self.db.insert_video(file_name, collection_name)
+            print(f"[INFO] Inserted video metadata: {file_name} (ID: {video_id})")
+
 def annotate_image(image_path, boxes, labels, normalized=None):
     """
     Annotate image with all boxes per class, saving one image per class type.
