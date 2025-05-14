@@ -55,5 +55,7 @@ pip install pynmea2
 pip install pyexiftool
 pip install watchdog
 
+pip install Flask-JWT-Extended
+
 echo Setup complete.
 pause

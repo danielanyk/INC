@@ -1,3 +1,55 @@
+<script>
+    window.onload = function () {
+        fetch('/check_user_collection')
+        .then(response => response.text())
+        .then(text => console.log("Server response:", text))
+        .catch(error => console.error('Error checking/creating collection:', error));
+
+        fetch('/check_roles_collection')
+        .then(response => response.json())
+        .then(data => {
+            const toggleContainer = document.getElementById('role-toggle');
+            toggleContainer.innerHTML = '';
+
+            data.forEach(role => {
+                const radioWrapper = document.createElement('div');
+                radioWrapper.innerHTML = `
+                    <label>
+                        <input type="radio" name="role" value="${role.roleid}">
+                        ${role.role}
+                    </label>
+                `;
+                toggleContainer.appendChild(radioWrapper);
+            });
+
+            // Keep hidden input updated
+            toggleContainer.addEventListener('change', function (e) {
+                if (e.target.name === 'role') {
+                    document.getElementById('role_hidden').value = e.target.value;
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error loading roles:', error);
+            document.getElementById('role-toggle').textContent = "Failed to load roles.";
+        });
+
+        document.getElementById('role-form').addEventListener('submit', function (e) {
+            const selected = document.querySelector('input[name="role"]:checked');
+            if (!selected) {
+                e.preventDefault();
+                alert("Please select a role.");
+            }
+        });
+    };
+</script>
+
+{% if msg %}
+    <div class="p-4 mb-4 text-sm rounded-lg {{ 'text-red-800 bg-red-100 dark:bg-red-200 dark:text-red-900' if not success else 'text-green-800 bg-green-100 dark:bg-green-200 dark:text-green-900' }}">
+        {{ msg }}
+    </div>
+{% endif %}
+
 {% extends "layouts/base-auth.html" %}
 
 {% block content %}
@@ -12,7 +64,7 @@
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
                 Create a Free Account
             </h2>
-            <form method="post" class="mt-8 space-y-6">
+            <form method="post" id="role-form" class="mt-8 space-y-6">
                 {{ form.hidden_tag() }}
 
                 <div>
@@ -20,18 +72,33 @@
                     {{ form.username(placeholder="Username", class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500") }}
                 </div>
                 <div>
-                    <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
-                    {{ form.name(placeholder="Name", class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500") }}
+                    <label for="firstname" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">First Name</label>
+                    {{ form.firstname(placeholder="First Name", class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500") }}
+                </div>
+                <div>
+                    <label for="lastname" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Last Name</label>
+                    {{ form.lastname(placeholder="Last Name", class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500") }}
                 </div>
                 <div>
                     <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>
                     {{ form.password(placeholder="Password", class="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500") }}
                 </div>
+                <div>
+    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Role of user:</label>
+    <div id="role-toggle" class="flex flex-wrap gap-6 items-center dark:text-white">
+        <!-- Plain radio buttons will be inserted here -->
+    </div>
+    <input type="hidden" name="role_hidden" id="role_hidden" value="">
+</div>
+
+
+            
 
                 <button type="submit" name="register" class="w-full px-5 py-3 text-base font-medium text-center text-white bg-primary-700 rounded-lg hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 sm:w-auto dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">Create account</button>
-                <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                <!-- <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Already have an account? <a href="{{ url_for('authentication_blueprint.login') }}" class="text-primary-700 hover:underline dark:text-primary-500">Login here</a>
-                </div>
+                </div> -->
+                <a href="javascript:history.back()" class="text-primary-700 hover:underline dark:text-primary-500">Go back</a>
             </form>
         </div>
     </div>

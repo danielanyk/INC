@@ -23,7 +23,7 @@ from celery import current_app
 import datetime
 from datetime import datetime
 from apps.config import Config
-from apps.home.process import pipeline
+from apps.home.process import (pipeline,saving_reportdata,changing_reportdata)
 from apps.home.report import (
     get_reports,
     get_filter_tags,
@@ -33,6 +33,7 @@ from apps.home.report import (
     get_amount_of_defects,
     get_bbox,
 )
+from apps.home.onemap_service import generate_static_map
 from apps.home.config import ConfigData
 import requests
 import cv2
@@ -52,13 +53,94 @@ import apps.home.state as state
 from apps.home.process import reannotate
 import dropbox
 from apps.home.dropbox_authy import get_auth_flow
+from functools import cache
 client = MongoClient("mongodb://localhost:27017/FYP")
 
 
-db = client["FYP"]
+# db = client["FYP"]
+db=client['newdb']
 if ConfigData.DROPBOX_AUTH_TOKEN!="":
     dbx = dropbox.Dropbox(ConfigData.DROPBOX_AUTH_TOKEN)
 blueprint.secret_key = "IFUCKINGHATEINCFUCKINCFUCKINCFUCKINCFUCKINCFUCKIAN6969696969696969699696969"
+
+@blueprint.route('/check_defecttype_collection')
+def check_defecttype_collection():
+    collection_name = "defecttype"
+
+    if collection_name in db.list_collection_names():
+        return 'defecttype existing'
+    else:
+        db.create_collection(collection_name)
+
+        defect_classes = {
+            "Alligator Crack": 1,
+            "Arrow": 2,
+            "Block Crack": 3,
+            "Damaged Base Crack": 4,
+            "Localised Surface Defect": 5,
+            "Multi Crack": 6,
+            "Parallel Lines": 7,
+            "Peel Off With Cracks": 8,
+            "Peeling Off Premix": 9,
+            "Pothole With Crack": 10,
+            "Rigid Pavement Crack": 11,
+            "Single Crack": 12,
+            "Transverse Crack": 13,
+            "Wearing Course Peeling Off": 14,
+            "White Lane": 15,
+            "Yellow Lane": 16,
+            "Raveling": 17,
+            "Faded Kerb": 18,
+            "Paint Spillage": 19,
+        }
+
+        db[collection_name].insert_many([
+            {"defecttypeid": _id, "defecttype": name} for name, _id in defect_classes.items()
+        ])
+
+        return "created defecttype"
+
+@blueprint.route('/check_roles_collection')
+def check_roles_collection():
+    collection_name = "roles"
+
+    if collection_name not in db.list_collection_names():
+        roles_data = [
+            {"roleid": 1, "role": "Admin"},
+            {"roleid": 2, "role": "Inspector"}
+        ]
+        db[collection_name].insert_many(roles_data)
+
+    # Return all roles
+    roles = list(db[collection_name].find({}, {'_id': 0}))
+    return jsonify(roles)
+
+from werkzeug.security import generate_password_hash
+@blueprint.route('/check_user_collection')
+def check_user_collection():
+    collection_name = "users"
+    default_user = {
+    "userid": 1,
+    "roleid": 1,
+    "username": "1",
+    "firstname": "1",
+    "lastname": "1",
+    "password_hash": generate_password_hash("1")  # ✅ fix key name
+}
+
+
+    if collection_name in db.list_collection_names():
+        # Collection exists, check if user with userid=1 exists
+        if db.users.find_one({"userid": 1}):
+            return "users existing"
+        else:
+            db.users.insert_one(default_user)
+            return "inserted default user into existing users collection"
+    else:
+        # Create collection and insert default user
+        db.create_collection(collection_name)
+        db.users.insert_one(default_user)
+        return "created users and inserted default user"
 
 @blueprint.route("/")
 @blueprint.route("/index")
@@ -96,6 +178,93 @@ def batch(batchID):
         }
     return render_template("pages/index.html", **context)
 
+# /batch/<batchID> batchID, methods=['POST']
+# @blueprint.route("/makereport")
+# def makereport():
+#     # data = request.get_json()
+#     # image_path = data.get('imagepath')
+#     image_path = request.args.get('imgpath')
+#     defect_type = request.args.get('defecttype')
+#     defect_type=image_path.replace('.jpg','_'+defect_type+"_defect.jpg")
+#     print(image_path)
+#     return render_template("accounts/makereport.html", image_path=image_path,defect_type=defect_type)
+
+from flask import send_file, abort
+import os
+
+@blueprint.route("/makereport")
+def makereport():
+    raw_path = request.args.get('imgpath')  # Full path
+    defecttype = request.args.get('defecttype')
+    status = request.args.get('status')
+    lon=request.args.get('lon')
+    lat=request.args.get('lat')
+    print(defecttype)
+    defect_label=defecttype.replace(' ',"_")
+    # Construct URLs pointing to the custom serving route, image_url=image_url
+    # image_url = url_for('home_blueprint.open_file', path=raw_path)
+    defect_path = raw_path.replace('.jpg', f'_{defect_label}_defect.jpg')
+    defect_url = url_for('home_blueprint.open_file', path=defect_path)
+    # [:-4]
+    imgpath=raw_path
+    return render_template("accounts/makereport.html", defect_type=defect_url,image_path=imgpath,defecttype=defecttype,status=status,lat=lat,lon=lon)
+
+
+
+@blueprint.route('/map')
+def get_static_map():
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+    if not lat or not lon:
+        return "Missing latitude or longitude", 400
+
+    img_io = generate_static_map(lat, lon)
+    if img_io:
+        return send_file(img_io, mimetype='image/png')
+    return "Failed to fetch map", 500
+
+@blueprint.route('/openfile')
+def open_file():
+    filepath = request.args.get('path')  # full path like C:\Users\...\image.jpg
+    if not filepath or not os.path.isfile(filepath):
+        return abort(404)
+    return send_file(filepath)
+# @blueprint.route('/load_image')
+# def load_image():
+#     path = request.args.get('path')
+#     if not path:
+#         return "No path provided", 400
+#     try:
+#         return send_file(path, mimetype='image/jpeg')
+#     except Exception as e:
+#         return f"Error loading file: {e}", 500
+    
+# @blueprint.route('/load_image2')
+# def load_image2():
+#     path = request.args.get('path')
+#     defect_type = request.args.get('defect_type')
+#     # path=path.replace('.jpg','_'+defect_type+"_defect.jpg")
+#     print("Path:", path)
+#     print("Defect Type:", defect_type)
+    
+#     # Do something with both...
+#     try:
+#         return send_file(path, mimetype='image/jpeg')
+#     except Exception as e:
+#         return f"Error loading file: {e}", 500
+
+@blueprint.route("/submit_report", methods=['POST'])
+def submit_report():
+    data=request.json
+    
+    print('request submitted')
+    if "unchecked" in data["defectstatus"]:
+        print("saving_report")
+        saving_reportdata(db, data)
+    else:
+        print("changing_report")
+        changing_reportdata(db,data)
+    return jsonify({"message": "success"})
 
 @blueprint.route("/starter")
 def starter():
@@ -143,7 +312,8 @@ def update_table():
         batches_list.append(batch)
     return jsonify(batches_list)
 
-
+#kyui
+# @cache
 @blueprint.route("/update_image_table/<batchID>", methods=["GET"])
 def update_image_table(batchID):
     batchID = int(batchID)
@@ -501,8 +671,8 @@ def dropbox_auth_start():
     print(session)
     return redirect(get_auth_flow(session).start())
 
-@blueprint.route("/open_qgis", methods=["GET"])
-def open_qgis():
+@blueprint.route("/open_onemap", methods=["GET"])
+def open_onemap():
     print("Trying to open QGIS.")
     original_cwd = os.getcwd()
     try:
@@ -788,7 +958,7 @@ def get_reports_route():
     print(tags)
     reports = get_reports(tags)
     return jsonify(reports)
-
+#use this to view report
 @blueprint.route("/get_reportPath/<imageID>/<defect>", methods=["GET"])
 def get_reportPath(imageID,defect):
     imageID = int(imageID)
@@ -807,6 +977,181 @@ def view_temp():
     print(data)
     view_report(data["path"])
     return jsonify("success")
+# 
+# @blueprint.route("/viewreport")
+# def viewreport():
+#     defecttype = request.args.get('defecttype')
+#     imageID = int(request.args.get('imageID'))
+#     print(imageID)
+#     pipeline = [
+#     {
+#         "$match": {
+#             "imageID": imageID
+#         }
+#     },
+#     {
+#         "$lookup": {
+#             "from": "defect",
+#             "let": { "reportDefectNumber": "$defectNumber" },
+#             "pipeline": [
+#                 {
+#                     "$match": {
+#     "$expr": {
+#         "$and": [
+#             { "$eq": ["$imageID", imageID] },
+#             {
+#                 "$regexMatch": {
+#                     "input": "$outputLabel",
+#                     "regex": defecttype,
+#                     "options": "i"
+#                 }
+#             },
+#             { "$eq": [{ "$toString": "$outputID" }, "$$reportDefectNumber"] }
+#         ]
+#     }
+# }
+
+#                 }
+#             ],
+#             "as": "matchedDefects"
+#         }
+#     },
+#     {
+#         "$match": {
+#             "matchedDefects.0": { "$exists": True }
+#         }
+#     },
+#     {
+#         "$project": {
+#             "_id": 0,
+#             "reportPath": 1
+#         }
+#     }
+# ]
+
+
+#     results = list(db.report.aggregate(pipeline))
+#     print(results)
+from flask import request, redirect, jsonify
+
+@blueprint.route("/viewreport")
+def viewreport():
+    defecttype = request.args.get('defecttype')
+    imageID = int(request.args.get('imageID'))
+    print(imageID)
+
+    pipeline = [
+        {
+            "$match": {
+                "imageID": imageID
+            }
+        },
+        {
+            "$lookup": {
+                "from": "defect",
+                "let": { "reportDefectNumber": "$defectNumber" },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    { "$eq": ["$imageID", imageID] },
+                                    {
+                                        "$regexMatch": {
+                                            "input": "$outputLabel",
+                                            "regex": defecttype,
+                                            "options": "i"
+                                        }
+                                    },
+                                    { "$eq": [{ "$toString": "$outputID" }, "$$reportDefectNumber"] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "as": "matchedDefects"
+            }
+        },
+        {
+            "$match": {
+                "matchedDefects.0": { "$exists": True }
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "reportPath": 1
+            }
+        }
+    ]
+
+    results = list(db.report.aggregate(pipeline))
+    print(results)
+
+    if len(results) > 1:
+        results = results[-1]
+    elif results:
+        results = results[0]
+    else:
+        return jsonify("no results"), 404
+
+    view_report(results["reportPath"])
+
+    # Redirect back to previous page
+    return redirect(request.referrer or "/")
+
+#     print(list(db.report.aggregate([
+#     { "$match": { "imageID": int(imageID) } }
+# ])))
+
+
+
+    if len(results)>1:
+        results=results[-1]
+    else:
+        results=results[0]
+    view_report(results["reportPath"])
+    return jsonify("success")
+
+# @blueprint.route("/viewreport")
+# def viewreport():
+#     defecttype = request.args.get('defecttype')
+#     imageID = int(request.args.get('imageID'))
+
+#     pipeline = [
+#         { "$match": { "imageID": imageID } },
+#         { "$lookup": {
+#             "from": "defect",
+#             "let": { "reportDefectNumber": "$defectNumber" },
+#             "pipeline": [
+#                 { "$match": {
+#                     "$expr": {
+#                         "$and": [
+#                             { "$eq": ["$imageID", imageID] },
+#                             { "$regexMatch": {
+#                                 "input": "$outputLabel",
+#                                 "regex": defecttype,
+#                                 "options": "i"
+#                             }},
+#                             { "$eq": [{ "$toString": "$outputID" }, "$$reportDefectNumber"] }
+#                         ]
+#                     }
+#                 }}
+#             ],
+#             "as": "matchedDefects"
+#         }},
+#         { "$match": { "matchedDefects.0": { "$exists": True } }},
+#         { "$project": { "_id": 0, "reportPath": 1 } }
+#     ]
+
+#     results = list(db.report.aggregate(pipeline))
+#     if len(results) > 1:
+#         results = results[-1]
+#     else:
+#         results = results[0]
+
+#     return send_file(results["reportPath"], as_attachment=False)
+
 
 
 @blueprint.route("/generate_report", methods=["POST"])

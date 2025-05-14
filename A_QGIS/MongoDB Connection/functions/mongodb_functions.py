@@ -17,8 +17,8 @@ from qgis.core import QgsProject
 # ------------------
 # Connect to MongoDB Database
 client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["FYP"]
-
+# db = client["FYP"]
+db=client["newdb"]
 # ------------------
 # Directories
 # ------------------

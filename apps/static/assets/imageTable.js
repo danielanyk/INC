@@ -269,26 +269,59 @@ function renderTableRows(filteredData) {
 
   filteredData.forEach((item, index) => {
     const rowClass = (index + 1) % 2 === 0 ? 'bg-gray-50 dark:bg-gray-700' : '';
+    imagepath=item["imagePath"]
+    console.log(item)
+    // Only apply sorting if arrays are defined and of same length
+    if (
+      Array.isArray(item.defects) &&
+      Array.isArray(item.outputID) &&
+      Array.isArray(item.severity) &&
+      Array.isArray(item.status) &&
+      item.defects.length === item.outputID.length &&
+      item.severity.length === item.outputID.length &&
+      item.status.length === item.outputID.length
+  ) {
+      // Zip and sort by outputID
+      const combined = item.outputID.map((id, i) => ({
+          outputID: id,
+          defect: item.defects[i],
+          severity: item.severity[i],
+          status: item.status[i]
+      }));
 
+      combined.sort((a, b) => a.outputID - b.outputID);
+
+      // Unzip back into the item object
+      item.outputID = combined.map(entry => entry.outputID);
+      item.defects = combined.map(entry => entry.defect);
+      item.severity = combined.map(entry => entry.severity);
+      item.status = combined.map(entry => entry.status);
+  }
     // Group defects by type
     const defectGroups = {};
-    item.outputID.forEach((defect, dIndex) => {
-      const defectType = defect; // Output label (defect type)
+    item.outputID.forEach((defectID, dIndex) => {
+      const defectType = defectID;
       const severity = item.severity[dIndex];
+      const defectstatus = item.status[dIndex] || "unchecked";
+
+      console.log(item.status)
 
       if (!defectGroups[defectType]) {
-        defectGroups[defectType] = { severity: [], count: 0 };
+        defectGroups[defectType] = { severity: [], count: 0, status: defectstatus };
       }
-
+      
+      
       defectGroups[defectType].severity.push(severity);
       defectGroups[defectType].count++;
+      
     });
-
     // Create a row for each unique defect type
     Object.entries(defectGroups).forEach(([defectType, data], dIndex) => {
+      const defectstatus = data.status;
       const defectClass = defectClasses[defectType] || { class: "border-purple-600 bg-pink-600 text-white", text: "Unknown Defect" };
       let severityBorder = '';
-
+      // console.log(defectClasses[defectType])
+      // console.log("defectclasses",defectClasses[defectType].text.replace(' ','_'))
       if (data.severity.includes(3)) {
         severityBorder = 'border-4 border-red-600';
       } else if (data.severity.includes(2)) {
@@ -296,44 +329,79 @@ function renderTableRows(filteredData) {
       } else if (data.severity.includes(1)) {
         severityBorder = 'border-4 border-amber-400';
       }
-
       const defectsHTML = `<span class="${severityBorder} ${defectClass.class}">${defectClass.text} (x${data.count})</span>`;
       const sanitizedDefect = defectClass.text.replace(/\s+/g, "-"); // Replace spaces with hyphens
       let b = '\\' + item.imagePath.split('\\').slice(item.imagePath.split('\\').indexOf('Batches')).join('\\');
       b = b.replace(/(\.[\w\d_-]+)$/i, '_legend_defect$1');
-
+      imgpath=imagepath
+      // console.log('imgpath:', imgpath);
+      var defecttype=defectClasses[defectType].text
+      // console.log("defecttype",defecttype)
       const btnID = `report-${item.imageID}-${sanitizedDefect}`;
+      //KYUI THE BUTTONS HEREE
+      // const btnHTML = `<a href='/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}' id="${btnID}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">
+      //   Make Report
+      //   <svg class="w-4 h-4 ml-1 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      //     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+      //   </svg>
+      // </a>`;
+      console.log(item.imageID)
+      let reportBtnHTML = '';
+      let viewBtnHTML = '';
+      console.log(defecttype,defectstatus,defectstatus[0] === "checked")
+      if (defectstatus === "checked") {
+        reportBtnHTML = `<a href='/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}&status="checked"&lon=${encodeURIComponent(item.longitude)}&lat=${encodeURIComponent(item.latitude)}' id="${btnID}" class="...">Edit Report</a>`;
+        viewBtnHTML = `<a id="view-${item.imageID}" href="/viewreport?imageID=${item.imageID}&defecttype=${encodeURIComponent(defecttype)}" class="...">View Report</a>`;
+      } else {
+        reportBtnHTML = `<a href='/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}&status="unchecked"&lon=${encodeURIComponent(item.longitude)}&lat=${encodeURIComponent(item.latitude)}' id="${btnID}" class="...">Make Report</a>`;
+        viewBtnHTML = `<a id="view-${item.imageID}" href="${b}" loading='lazy' class="...">View Image</a>`;
+      }
 
-      const btnHTML = `<button id="${btnID}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">
-        View Report
-        <svg class="w-4 h-4 ml-1 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-        </svg>
-      </button>`;
 
       const row = `
         <tr class="${rowClass}">
           <td class="p-4 text-sm font-normal text-gray-900 whitespace-nowrap dark:text-white">${item.imagePath}</td>
           <td class="p-4 text-sm font-semibold text-gray-900 whitespace-nowrap dark:text-white">${item.location}</td>
           <td class="p-4 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">${defectsHTML}</td>
-          <td class="inline-flex items-center p-4 space-x-2 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-gray-400">
-            <a id="view-${item.imageID}" href="${b}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">View</a>
+          <td class="inline-flex items-center p-4 space-x-2 text-sm font-normal text-gray-500 whitespace-nowrap dark:text-white">
+          ${viewBtnHTML}
+
           </td>
-          <td class="p-4 whitespace-nowrap">
-            ${btnHTML}
+          <td class="p-4 whitespace-nowrap dark:text-white">
+          ${reportBtnHTML}
+
           </td>
         </tr>
       `;
-
+      //${btnHTML} <a id="view-${item.imageID}" href="${b}" class="inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700">View Image</a>
       rows += row;
-
+     
       // Attach event listener directly within the loop
-      setTimeout(() => {
-        document.getElementById(btnID)?.addEventListener('click', function (event) {
-          console.log(defectType)
-          viewReport(event, item.imageID, defectType); // Pass defectType as the identifier
-        });
-      }, 0);
+      // setTimeout(() => {
+      //   // document.addEventListener('DOMContentLoaded', () => {
+      //   document.getElementById(btnID)?.addEventListener('click', function (event) {
+      //     // console.log(defectType)
+      //     // window.location.href = "{{ url_for('makereport', imgpath='imgpath') }}";
+      //     // window.location.href = "/makereport?imgpath=${encodeURIComponent(imgpath)}"
+      //     window.location.href = `/makereport?imgpath=${encodeURIComponent(imgpath)}&defecttype=${encodeURIComponent(defecttype)}`;
+
+      //     // viewReport(event, item.imageID, defectType); // Pass defectType as the identifier/batch/${batchID}
+      //     // fetch(`/makereport`, {
+      //     //   method: 'POST', // Using POST method to send data
+      //     //   headers: {
+      //     //     'Content-Type': 'application/json',
+      //     //   },
+      //     //   body: JSON.stringify({
+      //     //     imagepath: imgpath,
+      //     //   }),
+      //     //   })
+      //     //   .then(
+      //     //   response => response.json()
+      //     //   )
+      //     //   .then(data => {});
+      //   });
+      // // })
+      // }, 0);
     });
   });
 

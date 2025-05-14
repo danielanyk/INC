@@ -102,7 +102,6 @@ def get_town(frame_data, lat, lon, output_dir, db):
         image_id = db.image.find_one(sort=[("imageID", -1)])["imageID"] 
     except:
         image_id = 0
-
     for i in range(len(frame_data["lon"])):
         # image_ID
         image_id = image_id + 1
@@ -986,7 +985,6 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
                 if value["text"] == defect_type:
                     defectNumber=key
 
-
             max_report = db.report.find_one(sort=[("reportID", -1)])
             next_reportID = max_report["reportID"] + 1 if max_report else 1
             if not os.path.exists(os.path.abspath("Reports")):
@@ -1019,7 +1017,8 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
                     "remarks": "",
                     "supervisor": "",
                     "via": "",
-                    "acknowledgement": ""
+                    "acknowledgement": "",
+                    "status":"unchecked"
                 }
             )
             print(f"Entered MongoDB for {defect_type}: {defect_image_path}")
@@ -1057,7 +1056,283 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
         "bbox": r_bbox,
     }
     selected_template = 1
-    generate_report(report_data, selected_template, 'download')
+    # generate_report(report_data, selected_template, 'download')
+
+def saving_reportdata(db,data):
+            defectimg = data.get('defectimg')
+            defecttype = data.get('defecttype')
+            imgpath = data.get('imgpath')
+            inspected_by = data.get('inspectedBy')
+            inspection_date = data.get('inspectionDate')
+            defect_name = data.get('defectnumber')
+            quantity = data.get('quantity')
+            measurement = data.get('measurement')
+            cause = data.get('cause')
+            recommendation = data.get('recommendation')
+            remarks = data.get('remarks')
+            supervisor = data.get('supervisor')
+            via = data.get('via')
+            acknowledgement = data.get('acknowledgement')
+            print('saving',imgpath,defecttype)
+            defectRepeatedValue=data.get('defectRepeatedValue')
+            pipeline = [
+    # Join with image collection
+    {
+        "$lookup": {
+            "from": "image",
+            "localField": "imageID",
+            "foreignField": "imageID",
+            "as": "imageData"
+        }
+    },
+    {"$unwind": "$imageData"},
+    
+    # Match imagePath == imgpath
+    {
+        "$match": {
+            "imageData.imagePath": imgpath
+        }
+    },
+
+    # Join with defect collection
+    {
+        "$lookup": {
+            "from": "defect",
+            "localField": "imageID",
+            "foreignField": "imageID",
+            "as": "defectData"
+        }
+    },
+    {"$unwind": "$defectData"},
+
+    # Match defect.outputLabel *contains* defecttype
+    {
+        "$match": {
+            "defectData.outputLabel": {
+                "$regex": defecttype,
+                "$options": "i"  # Case-insensitive
+            }
+        }
+    },
+
+    # Ensure report.defectNumber == defect.outputID
+    {
+        "$match": {
+            "$expr": {
+                "$eq": [
+                    {"$toString": "$defectData.outputID"},
+                    "$defectNumber"
+                ]
+            }
+        }
+    },
+
+    # Project only the desired field
+    {
+        "$project": {
+            "_id": 0,
+            "reportID": 1
+        }
+    }
+]
+
+            
+
+
+
+            results = list(db.report.aggregate(pipeline))
+  
+            print("IMGAYYY",results)
+            if len(results)>1:
+                results=results[-1]
+            else:
+                results=results[0]
+            
+            update_data = {
+                "$set": {
+                    "inspectedBy": inspected_by,
+                    "inspectionDate": inspection_date,
+                    "inspectionType": ConfigData.INSPECTION_TYPE,
+                    "generationTime": datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S"),
+                    "tags": "",
+                    "quantity": quantity,
+                    "measurement": measurement,
+                    "cause": cause,
+                    "recommendation": recommendation,
+                    "remarks": remarks,
+                    "supervisor": supervisor,
+                    "via": via,
+                    "acknowledgement": acknowledgement,
+                    "status":"checked"
+                }
+            }
+            
+
+            # Perform the update operation
+            # results = list(db.report.aggregate(pipeline))
+            if results:
+                db.report.update_one({"reportID": results["reportID"]}, update_data)
+            else:
+                print("No matching report found")
+
+            generate_new(db,results["reportID"],defecttype,defect_name,imgpath,defectRepeatedValue)
+            
+            return jsonify({"message": "success"})
+            # print(f"Entered MongoDB for {defecttype}: {defectimg}")
+
+def generate_new(db, report_id,defect_type,name,image,defectRepeatedValue):
+    report = db.report.find_one({"reportID": report_id})
+    if not report:
+        raise ValueError(f"Report with reportID {report_id} not found.")
+
+    image_id = report["imageID"]
+
+    # Step 2: Fetch image by imageID
+    image_doc = db.image.find_one({"imageID": image_id})
+    if not image_doc:
+        raise ValueError(f"Image with imageID {image_id} not found.")
+
+    # Step 3: Fetch defect using imageID and partial match on outputLabel
+    defect = db.defect.find_one({
+        "imageID": image_id,
+        "outputLabel": {"$regex": defect_type, "$options": "i"}
+    })
+    if not defect:
+        raise ValueError(f"No defect found for imageID {image_id} with label containing '{defect_type}'.")
+
+    # Assemble the final data using provided + fetched values
+    report_data = {
+        "name": name,  # provided
+        "image": image,  # provided
+        "report_id": report_id,  # provided
+        "defect_type": defect_type,  # provided
+        "ins_type": report["inspectionType"],
+        "ins_date": report["inspectionDate"],
+        "road_type": image_doc["roadType"],
+        "latitude": image_doc["latitude"],
+        "longitude": image_doc["longitude"],
+        "inspector": report["inspectedBy"],
+        "severity": defect["severity"],
+        "road": image_doc["road"],
+        "quantity": report.get("quantity", ""),
+        "measurement": report.get("measurement", ""),
+        "cause": report.get("cause", ""),
+        "recommendation": report.get("recommendation", ""),
+        "remarks": report.get("remarks", ""),
+        "supervisor": report.get("supervisor", ""),
+        "via": report.get("via", ""),
+        "acknowledgement": report.get("acknowledgement", ""),
+        "filtered_bbox": defect["bbox"],
+        "defectRepeatedValue":defectRepeatedValue
+    }
+
+    generate_report(report_data, defect_type, "template1", 'download')
+
+def changing_reportdata(db,data):
+
+    defectimg = data.get('defectimg')
+    defecttype = data.get('defecttype')
+    imgpath = data.get('imgpath')
+    inspected_by = data.get('inspectedBy')
+    inspection_date = data.get('inspectionDate')
+    defect_name = data.get('defectnumber')
+    quantity = data.get('quantity')
+    measurement = data.get('measurement')
+    cause = data.get('cause')
+    recommendation = data.get('recommendation')
+    remarks = data.get('remarks')
+    supervisor = data.get('supervisor')
+    via = data.get('via')
+    acknowledgement = data.get('acknowledgement')
+    defectRepeatedValue=data.get('defectRepeatedValue')
+    print('saving', imgpath, defecttype)
+
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "image",
+                "localField": "imageID",
+                "foreignField": "imageID",
+                "as": "imageData"
+            }
+        },
+        {"$unwind": "$imageData"},
+        {
+            "$match": {
+                "imageData.imagePath": imgpath
+            }
+        },
+        {
+            "$lookup": {
+                "from": "defect",
+                "localField": "imageID",
+                "foreignField": "imageID",
+                "as": "defectData"
+            }
+        },
+        {"$unwind": "$defectData"},
+        {
+            "$match": {
+                "defectData.outputLabel": {
+                    "$regex": defecttype,
+                    "$options": "i"
+                }
+            }
+        },
+        {
+            "$match": {
+                "$expr": {
+                    "$eq": [
+                        {"$toString": "$defectData.outputID"},
+                        "$defectNumber"
+                    ]
+                }
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "reportID": 1
+            }
+        }
+    ]
+
+    results = list(db.report.aggregate(pipeline))
+    print("IMGAYYY", results)
+
+    if not results:
+        print("No matching report found")
+        return jsonify({"message": "No matching report found"}), 404
+
+    if len(results)>1:
+                results=results[-1]
+    else:
+                results=results[0]
+            
+    # Dynamically create $set fields only when they have value
+    dynamic_fields = {
+        "inspectedBy": inspected_by,
+        "inspectionDate": inspection_date,
+        "inspectionType": ConfigData.INSPECTION_TYPE,
+        "generationTime": datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S"),
+        "tags": "",
+        "quantity": quantity,
+        "measurement": measurement,
+        "cause": cause,
+        "recommendation": recommendation,
+        "remarks": remarks,
+        "supervisor": supervisor,
+        "via": via,
+        "acknowledgement": acknowledgement,
+        "status": "checked"
+    }
+
+    update_data = {"$set": {k: v for k, v in dynamic_fields.items() if v not in (None, "", [])}}
+
+    db.report.update_one({"reportID": results["reportID"]}, update_data)
+    generate_new(db,results["reportID"],defecttype,defect_name,imgpath,defectRepeatedValue)
+    return jsonify({"message": "success"})
+
 
 
 defect_classes = {

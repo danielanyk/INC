@@ -1023,7 +1023,8 @@ class DashboardWidget(QDockWidget):
     def connect_to_database(self):
         # Replace with your MongoDB connection string
         client = MongoClient("mongodb://localhost:27017/")
-        db = client["FYP"]  # Ensure the database name matches your MongoDB setup
+        # db = client["FYP"]  # Ensure the database name matches your MongoDB setup
+        db=client["newdb"]
         return db
 
     def get_database(self):

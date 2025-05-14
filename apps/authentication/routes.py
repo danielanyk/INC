@@ -8,7 +8,8 @@ from flask_login import (
     login_required
 )
 from werkzeug.utils import secure_filename
-from apps import mongo, login_manager
+from apps.extensions import mongo, login_manager
+
 from apps.authentication import blueprint
 from apps.authentication.forms import LoginForm, CreateAccountForm, ChangePasswordForm
 from apps.authentication.models import Users, Profile
@@ -16,6 +17,10 @@ from apps.config import Config
 from pymongo import MongoClient
 from apps.authentication.util import verify_pass, hash_pass
 from bson import ObjectId
+from flask_jwt_extended import create_access_token
+from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify
+# from apps.extensions import mongo  # safe now
 
 # @blueprint.route('/')
 # def route_default():
@@ -25,66 +30,191 @@ from bson import ObjectId
 # Login & Registration
 
 client = MongoClient("mongodb://localhost:27017/FYP")
-db = client["FYP"]
+# db = client["FYP"]
+db=client["newdb"]
+
+# @blueprint.route('/login', methods=['GET', 'POST'])
+# def login():
+#     login_form = LoginForm(request.form)
+#     if request.method == 'POST' and 'login' in request.form:
+#         # Read form data
+#         username = request.form['username']
+#         password = request.form['password']
+
+#         # Locate user
+#         user = Users.get_by_username(username)
+#         print(user)
+#         userrole=Users.get_role_by_username(username)
+#         print(userrole,'\n')
+#         # Check the password
+        # if user and user.check_password(password):
+        #     login_user(user)
+        #     access_token = create_access_token(
+        #         identity=userrole['userid'],
+        #         additional_claims={"role": userrole['role']},
+        #         expires_delta=False  # This makes the token never expire
+        #     )
+        #     return redirect(url_for('home_blueprint.index'))
+
+#         # Something (user or pass) is not ok
+#         return render_template('accounts/login.html',
+#                                msg='Wrong user or password',
+#                                form=login_form)
+
+#     if not current_user.is_authenticated:
+#         return render_template('accounts/login.html',
+#                                form=login_form)
+#     return redirect(url_for('home_blueprint.index'))
+from flask import jsonify
 
 @blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     login_form = LoginForm(request.form)
     if request.method == 'POST' and 'login' in request.form:
-        # Read form data
         username = request.form['username']
         password = request.form['password']
 
-        # Locate user
         user = Users.get_by_username(username)
+        userdata = Users.get_role_by_username(username)
 
-        # Check the password
         if user and user.check_password(password):
             login_user(user)
-            return redirect(url_for('home_blueprint.index'))
+            access_token = create_access_token(
+                identity=userdata['userid'],
+                additional_claims={"role": userdata['role']},
+                expires_delta=False
+            )
+            print('success')
+            return jsonify({
+                'access_token': access_token,
+                'userid':userdata['userid'],
+                'role': userdata['role']
+            }), 200
 
-        # Something (user or pass) is not ok
-        return render_template('accounts/login.html',
-                               msg='Wrong user or password',
-                               form=login_form)
+        return jsonify({'error': 'Wrong username or password'}), 401
 
-    if not current_user.is_authenticated:
-        return render_template('accounts/login.html',
-                               form=login_form)
-    return redirect(url_for('home_blueprint.index'))
+    # For GET request
+    return render_template('accounts/login.html', form=login_form)
+# Make a route that returns the redirect URL
+# @blueprint.route("/login-success-url")
+# def login_success_url():
+#     print("calling....")
+#     return redirect(url_for('home_blueprint.index'))
 
+
+# @blueprint.route('/register', methods=['GET', 'POST'])
+# def register():
+#     create_account_form = CreateAccountForm(request.form)
+#     if request.method == 'POST' and 'register' in request.form:
+#         username = request.form['username']
+#         name = request.form['name']
+
+#         # Check if username or email already exists
+#         if Users.get_by_username(username):
+#             return render_template('accounts/register.html',
+#                                    msg='Username',
+#                                    success=False,
+#                                    form=create_account_form)
+
+#         # Create a new user
+#         user = Users(
+#             username=username,
+#             name=name,
+#             password_hash=None
+#         )
+#         user.set_password(request.form['password'])
+#         user.save()
+#         # Log out the current user (if any)
+#         logout_user()
+
+#         # Log in the new user
+#         login_user(user)
+
+#         return redirect(url_for('home_blueprint.index'))
+
+#     return render_template('accounts/register.html', form=create_account_form)
+
+# @blueprint.route('/register', methods=['GET', 'POST'])
+# def register():
+#     create_account_form = CreateAccountForm(request.form)
+#     if request.method == 'POST' and 'register' in request.form and create_account_form.validate():
+#         username = create_account_form.username.data
+#         firstname = create_account_form.firstname.data
+#         lastname = create_account_form.lastname.data
+#         password = create_account_form.password.data
+#         role = create_account_form.role.data
+#         print("\nin register ",role)
+
+#         if Users.get_by_username(username):
+#             return render_template('accounts/register.html',
+#                                    msg='Username already exists.',
+#                                    success=False,
+#                                    form=create_account_form)
+
+#         user = Users(
+#             username=username,
+#             firstname=firstname,
+#             lastname=lastname,
+#             role=role,  # Make sure your Users model has a 'role' field
+#             password_hash=None
+#         )
+#         user.set_password(password)
+#         user.save()
+
+#         logout_user()
+#         login_user(user)
+#         return redirect(url_for('home_blueprint.index'))
+
+#     return render_template('accounts/register.html', form=create_account_form)
+from flask import session
 
 @blueprint.route('/register', methods=['GET', 'POST'])
 def register():
     create_account_form = CreateAccountForm(request.form)
-    if request.method == 'POST' and 'register' in request.form:
-        username = request.form['username']
-        name = request.form['name']
 
-        # Check if username or email already exists
+    if request.method == 'GET':
+        # Store the page that referred to the register page
+        prev_url = request.referrer
+        if prev_url and not prev_url.endswith('/register'):
+            session['previous_page'] = prev_url
+
+    if request.method == 'POST' and 'register' in request.form and create_account_form.validate():
+        username = create_account_form.username.data
+        firstname = create_account_form.firstname.data
+        lastname = create_account_form.lastname.data
+        password = create_account_form.password.data
+        role = create_account_form.role.data
+        print("\nin register ", role)
+
         if Users.get_by_username(username):
             return render_template('accounts/register.html',
-                                   msg='Username',
+                                   msg='Username already exists.',
                                    success=False,
                                    form=create_account_form)
 
-        # Create a new user
         user = Users(
             username=username,
-            name=name,
+            firstname=firstname,
+            lastname=lastname,
+            role=role,
             password_hash=None
         )
-        user.set_password(request.form['password'])
+        user.set_password(password)
         user.save()
-        # Log out the current user (if any)
-        logout_user()
 
-        # Log in the new user
-        login_user(user)
-
-        return redirect(url_for('home_blueprint.index'))
+        # Do not login as new user
+        # Redirect to the originally stored page
+        return redirect(session.get('previous_page', url_for('home_blueprint.index')))
 
     return render_template('accounts/register.html', form=create_account_form)
+
+
+
+@blueprint.route("/login-success-url")
+def login_success_url():
+    print("calling....")
+    return redirect(url_for('home_blueprint.index'))  # e.g., resolves to /index
+
 
 @blueprint.route('/logout')
 def logout():
@@ -115,6 +245,9 @@ def profile():
     context['images'] = images  #! New Change : Pass images to the template
 
     return render_template('accounts/profile.html', **context)
+
+
+
 
 #! Can use this function if want to add the ability to upload profile image from outside
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}

@@ -84,9 +84,17 @@
                 </div>
             </div>
         </div>
+        <div id="admin-only" class="p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+    <a href="{{ url_for('authentication_blueprint.register') }}" class="text-primary-700 hover:underline dark:text-primary-500">
+        Create New Account
+    </a>
+</div>
     </div>
 
-    <div class="col-span-2">
+    <div class="col-span-2 flex flex-col xl:flex-row gap-4">
+    <!-- Account Creation Box -->
+    
+
         <div class="p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm 2xl:col-span-2 dark:border-gray-700 sm:p-6 dark:bg-gray-800">
             <h3 class="mb-4 text-xl font-semibold dark:text-white">Account Information</h3>
             <form method="post">
@@ -226,5 +234,15 @@
         return confirm("Are you sure you want to change your account type?")
     }
 </script>
-
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const userRole = localStorage.getItem('user_role');
+        if (userRole !== 'Admin') {
+            const adminDiv = document.getElementById('admin-only');
+            if (adminDiv) {
+                adminDiv.style.display = 'none';
+            }
+        }
+    });
+</script>
 {% endblock extra_js %}

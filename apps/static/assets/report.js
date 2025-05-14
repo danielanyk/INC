@@ -632,6 +632,8 @@ function addtags(ele) {
 }
 
 // Get the next 30 reports
+
+//Change here kyui
 function View30More() {
     
     const severity = document.querySelector(SEVERITY_SELECTOR).value;
@@ -736,6 +738,8 @@ function View30More() {
             var viewButton = document.createElement("button");
 
             viewButton.className = "view-button inline-flex items-center p-2 text-xs font-medium uppercase rounded-lg text-primary-700 sm:text-sm hover:bg-gray-100 dark:text-primary-500 dark:hover:bg-gray-700";
+            
+            //changed frokm view to make
             viewButton.textContent = "View";
             viewButton.addEventListener("click", function(event) {
                 viewButtonHandler(event, report);
