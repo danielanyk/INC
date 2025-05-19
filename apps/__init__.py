@@ -128,6 +128,7 @@ def celery_init_app(app: Flask) -> Celery:
 
 def register_extensions(app):
     mongo.init_app(app)
+    print("Mongo DB object:", mongo.db)
     login_manager.init_app(app)
     jwt.init_app(app)
 

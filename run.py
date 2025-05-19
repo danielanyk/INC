@@ -8,7 +8,7 @@
 # from flask import jsonify, request
 # from apps.config import config_dict
 # from apps import create_app, mongo
-# from celery import Celery, Task
+from celery import Celery, Task
 # from flask_restful import Resource, Api
 # from apps.home.models import Product
 # import json
@@ -114,7 +114,7 @@ except KeyError:
 app = create_app(app_config)
 
 
-
+celery_app = app.extensions["celery"]
 api = Api(app)
 
 
@@ -149,4 +149,4 @@ def clear_processed_videos():
 if __name__ == "__main__":
     logger.debug('Starting the Flask application...')
     clear_processed_videos()
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='192.168.0.111', port=5000)

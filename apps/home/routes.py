@@ -770,8 +770,8 @@ def batchStatus(batchID):
 @blueprint.route("/charts/", methods=["GET"])
 def charts():
     products = [
-        {"name": product.name, "price": product.price} for product in Product.get_list()
-    ]
+    {"name": product_dict['name'], "price": product_dict['price']} 
+    for product_dict in Product.get_json_list()]
     context = {}
     context["parent"] = "apps"
     context["segment"] = "charts"
@@ -1376,7 +1376,8 @@ def open_annotator():
         return "No file paths provided"
     # Validate each file path
     for i, path in enumerate(file_paths):
-        full_path = os.path.join(root_dir, 'Batches', path)
+        relative_path = os.path.normpath(path)
+        full_path = os.path.join(root_dir, 'Batches', relative_path)
     
         # Initialize json_data for each image file
         json_data = {
@@ -1408,9 +1409,10 @@ def open_annotator():
     
         # Append json_data for the current image to json_annotations
         json_annotations.append(json_data)
-        
-        if not os.path.isfile(os.path.join(root_dir, 'Batches', path)) or imghdr.what(os.path.join(root_dir, 'Batches', path)) is None:  # Check if the file exists
-            return f"File not found: {path}"
+        print('Full path:', full_path)
+        print('Exists?', os.path.isfile(full_path))
+        if not os.path.isfile(full_path):
+            return jsonify({'error': f"File not found: {full_path}"}), 400
         else:
             file_paths[i] = full_path
 
@@ -1495,7 +1497,7 @@ def open_annotator():
 
     # Delete temp directory
     shutil.rmtree(tempdir)
-    return "success"
+    # return "success"
     
 @blueprint.route("/update_editor_table", methods=['GET'])
 def update_editor_table(start=0, end=30):

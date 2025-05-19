@@ -12,7 +12,7 @@ from services.engine_manager import EngineManager
 from utils.road_type_mapper import RoadTypeMapper
 from config import Config
 from datetime import datetime
-
+from services.severity import SeverityEngine
 # class VideoBatchProcessor:
 #     def __init__(self, output_dir="reports"):
 #         self.output_dir = output_dir
@@ -82,181 +82,165 @@ from datetime import datetime
 
 class VideoBatchProcessor:
     def __init__(self,db, output_dir="reports"):
+        self.severity_engine = SeverityEngine()
         self.output_dir = output_dir
         self.db = db
         self.report_generator = ReportGenerator()
         self.engine_manager = EngineManager()  # Added EngineManager
         self.road_type_mapper = RoadTypeMapper(Config.ROAD_TYPE_MAPPER_PATH)
 
-    def process_video(self,video_id,video_path,folder_name,video_report_dir,file_name):
+    def process_video(self, video_id, video_path, folder_name, video_report_dir, file_name):
+        print(f"[START] Processing video: {file_name}")
+        processor = VideoProcessor()
+        processor.process_video(video_path)
+        missing_records = processor.detect_missing_signs()
+        print("Done black's part")
 
-        # for file_name in os.listdir(folder_path):
-        #     if not file_name.lower().endswith((".mp4", ".avi", ".mov", ".mkv")):
-        #         continue
+        # GPS & road type
+        lat, lon, timestamp = extract_gps_and_timestamp(video_path)
+        if lat is not None and lon is not None:
+            road_type = self.road_type_mapper.get_road_type(lat, lon)
+        else:
+            lat, lon = 1.3521, 103.8198
+            road_type = self.road_type_mapper.get_road_type(lat, lon)
 
-            print(f"[START] Processing video: {file_name}")
-            processor = VideoProcessor()
-            processor.process_video(video_path)
-            missing_records = processor.detect_missing_signs()
-            print("Done black's part")
+        for record in missing_records:
+            record["longtitude"] = lon
+            record["latitude"] = lat
+            record["roadType"] = road_type
 
-            # Extract GPS and timestamp for current video
-            lat, lon, timestamp = extract_gps_and_timestamp(video_path)
-            if lat is not None and lon is not None:
-                road_type = self.road_type_mapper.get_road_type(lat, lon)
-            else:
-                # Default to central Singapore
-                lat, lon = 1.3521, 103.8198
-                road_type = self.road_type_mapper.get_road_type(lat, lon)  # No GPS needed here
-            for record in missing_records:
-                record["longtitude"] = lon
-                record["latitude"] = lat
-                record["roadType"] = road_type
+        # Start reading video frames
+        video_capture = cv2.VideoCapture(video_path)
+        frame_idx = 0
+        frame_interval = video_capture.get(cv2.CAP_PROP_FPS)
 
+        engine_outputs = []
+        image_map = {}  # new_img_path -> image_id
+        images_collection = []
 
-            video_capture = cv2.VideoCapture(video_path)
-            engine_outputs = []
-            frame_idx = 0
-            frame_interval=video_capture.get(cv2.CAP_PROP_FPS)
-            generated_images=[]
-            while True:
-                ret, frame = video_capture.read()
-                if not ret:
-                    break
-                frame_idx += 1
-                # save a temporary image for EngineManager to consume
-                if frame_idx % round(frame_interval) == 0:
-                    tmp_img_path = os.path.join(
-                        "static/defect_imgs",
-                        f"{folder_name}_{video_id}_frame{frame_idx}.jpg"
-                    )
-                    cv2.imwrite(tmp_img_path, frame)
-                    generated_images.append(tmp_img_path)
-                                    # run through each engine
-                    frame_start_time = time.time()
-                    for model_name in self.engine_manager.ENGINES:
-                        # try:
-                            # Capture time for each model prediction
-                            model_start_time = time.time()
-                            
-                            result = self.engine_manager.predict(model_name, tmp_img_path)
-                            
-                            # For each result, append output to engine_outputs
-                            if result is not None:
-                                for lbl, box, conf, cid in zip(result["output_lbl"], result["xyxy"], result["confidence"], result["class_id"]):
-                                    if lbl.lower() == "undamaged kerb" or lbl.lower() == "no raveling":
-                                        continue  # Skip this label (as per your previous condition)
+        while True:
+            ret, frame = video_capture.read()
+            if not ret:
+                break
+            frame_idx += 1
 
-                                    if isinstance(box, (list, tuple)) and len(box) == 4:
-                                        # Annotate the image with only one defect type
+            if frame_idx % round(frame_interval) == 0:
+                tmp_img_path = os.path.join(
+                    "static/defect_imgs", f"{folder_name}_{video_id}_frame{frame_idx}.jpg"
+                )
+                cv2.imwrite(tmp_img_path, frame)
 
-                                        annotated_dict = annotate_image(tmp_img_path, [box], [lbl])
-                                        new_img_path = list(annotated_dict.values())[0]  # Wrap box in a list to pass to the function
-                                        
-                                        # Store the updated image path in the records
-                                        engine_outputs.append({
-                                            "defectId": str(uuid.uuid4()),
-                                            "defectType": lbl,
-                                            "latitude": lat,
-                                            "longtitude": lon,
-                                            "imagePath": new_img_path,  # Use the new image path with defect type in the name
-                                            "classId": cid,
-                                            "roadType": road_type,
-                                            "timestamp": timestamp
-                                        })
+                for model_name in self.engine_manager.ENGINES:
+                    result = self.engine_manager.predict(model_name, tmp_img_path)
+                    if result is not None:
+                        for lbl, box, conf, cid in zip(result["output_lbl"], result["xyxy"], result["confidence"], result["class_id"]):
+                            if lbl.lower() in ["undamaged kerb", "no raveling"]:
+                                continue
+                            if isinstance(box, (list, tuple)) and len(box) == 4:
+                                annotated_dict = annotate_image(tmp_img_path, [box], [lbl])
+                                new_img_path = list(annotated_dict.values())[0]
+                                try:
+                                    cropped_path = crop_image(tmp_img_path, box)
+                                    if os.path.exists(cropped_path):
+                                        print("Cropped image exists right after saving.")
                                     else:
-                                        print(f"[WARN] Invalid box format: {box}. Skipping annotation.")
-                            
-                            # Capture the end time for each model and print the time taken
-                            model_end_time = time.time()
-                            model_duration = model_end_time - model_start_time
-                            print(f"[INFO] Model '{model_name}' processed in {model_duration:.2f} seconds.")
-                        
-                        # except Exception as e:
-                        #     print(f"[ERROR] Engine '{model_name}' on frame {frame_idx}: {e}")
+                                        print("Cropped image NOT found right after saving!")
+                                    severity_start = time.time()
+                                    print(cropped_path)
+                                    severity = self.severity_engine.predict(cropped_path)
+                                    print(f"[TIMER] Severity prediction took {time.time() - severity_start:.4f}s")
+                                except Exception as e:
+                                    print(f"[ERROR] Severity prediction failed: {e}")
+                                    severity = "Unknown"
+                                print(severity)
+                                # Only add image entry once
+                                if new_img_path not in image_map:
+                                    image_id = str(uuid.uuid4())
+                                    image_map[new_img_path] = image_id
+                                    images_collection.append({
+                                        "ImageID": image_id,
+                                        "Path": new_img_path
+                                    })
 
-                    # After processing all models, capture the total frame time
-                    frame_end_time = time.time()
-                    frame_duration = frame_end_time - frame_start_time
+                                engine_outputs.append({
+                                    "defectId": str(uuid.uuid4()),
+                                    "defectType": lbl,
+                                    "latitude": lat,
+                                    "longtitude": lon,
+                                    "imageId": image_map[new_img_path],
+                                    "classId": cid,
+                                    "roadType": road_type,
+                                    "timestamp": timestamp,
+                                    "severity": severity
+                                })
 
-                    # Print the time taken for the entire frame processing
-                    print(f"[INFO] Total time for frame {frame_idx}: {frame_duration:.2f} seconds.")
+        combined_records = missing_records + engine_outputs
 
+        # Load DefectTypeID mappings
+        defect_type_cache = {
+            dt["DefectName"]: dt["DefectTypeID"]
+            for dt in self.db.defect_types.find()
+        }
 
-            print("missing_records:",missing_records)
-            print("engine_outputs:",engine_outputs)
-            combined_records = missing_records + engine_outputs
-            for img_path in generated_images:
-                try:
-                    os.remove(img_path)
-                except Exception as e:
-                    print(f"[WARN] Could not delete image {img_path}: {e}")
+        processed_defects = []
+        processed_reports = []
 
-            processed_defects = []
-            processed_reports = []
+        for defect in combined_records:
+            defect_id = defect.get("defectId", str(uuid.uuid4()))
+            defect_type_name = defect.get("defectType")
+            defect_type_id = defect_type_cache.get(defect_type_name)
 
-            defect_type_cache = {
-                dt["DefectName"]: dt["DefectTypeID"]
-                for dt in self.db.defect_types.find()
-            }
+            if not defect_type_id:
+                print(f"[ERROR] Unknown defect type: {defect_type_name}")
+                continue
 
-            for defect in combined_records:
-                defect_id = defect.get("defectId", str(uuid.uuid4()))
-                defect_type_name = defect.get("defectType")
-                defect_type_id = defect_type_cache.get(defect_type_name)
+            address = reverse_geocode(defect["latitude"], defect["longtitude"])
+            map_stream = generate_static_map(defect["latitude"], defect["longtitude"])
+            if not (address and map_stream):
+                print(f"[WARN] Skipped defect {defect_id}: address/map unavailable")
+                continue
 
-                if not defect_type_id:
-                    print(f"[ERROR] Unknown defect type: {defect_type_name}")
-                    continue
+            pdf_path = os.path.join(video_report_dir, f"{defect_id}.pdf")
+            defect["DefectID"] = defect_id
+            self.report_generator.generate_report(defect, address, map_stream, pdf_path)
+            processed_defects.append({
+                "DefectID": defect_id,
+                "VideoID": video_id,
+                "DefectTypeID": defect_type_id,
+                "Latitude": defect["latitude"],
+                "Longitude": defect["longtitude"],
+                "Severity": defect["longtitude"],
+                "ImageID": defect.get("imageId"),  
+                "DetectedDateTime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
+            })
 
-                address = reverse_geocode(defect["latitude"], defect["longtitude"])
-                map_stream = generate_static_map(defect["latitude"], defect["longtitude"])
+            processed_reports.append({
+                "ReportID": str(uuid.uuid4()),
+                "DefectID": defect_id,
+                "RecommendationID": None,
+                "RemarkId": None,
+                "Status": "Unverified",
+                "VerifiedAt": None,
+                "latestmodificationtime": None,
+                "generationtime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
+                "reportpath": None,
+                "tags": None,
+                "measurement": None,
+                "cause": None,
+                "supervisorid": None,
+                "via": None,
+                "acknowledgement(check)": None,
+                "inspectiontype(check)": None
+            })
 
-                if not (address and map_stream):
-                    print(f"[WARN] Skipped defect {defect_id}: address/map unavailable")
-                    continue
+        self.db.batch_insert_images(images_collection)    
+        self.db.batch_insert_defects(processed_defects)      
+        self.db.batch_insert_reports(processed_reports)
+        self.db.update_video_status(video_id, "Completed")
 
-                pdf_path = os.path.join(video_report_dir, f"{defect_id}.pdf")
-                defect["DefectID"] = defect_id
-                self.report_generator.generate_report(defect, address, map_stream, pdf_path)
+        print(f"[DONE] Finished processing video: {file_name}")
+        video_capture.release()
 
-                processed_defects.append({
-                    "DefectID": defect_id,
-                    "VideoID": video_id,
-                    "DefectTypeID": defect_type_id,
-                    "Latitude": defect["latitude"],
-                    "Longitude": defect["longtitude"],
-                    "Severity": defect.get("severity", "Moderate"),
-                    "ImagePath": defect["imagePath"],
-                    "DetectedDateTime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
-                })
-
-                processed_reports.append({
-                    "ReportID": str(uuid.uuid4()),
-                    "DefectID": defect_id,
-                    "RecommendationID": None,
-                    "RemarkId": None,
-                    "Status": "Unverified",
-                    "VerifiedAt": None,
-                    "latestmodificationtime": None,
-                    "generationtime": datetime.now().strftime("%d %b %Y, %H:%M:%S"),
-                    "reportpath": None,
-                    "tags": None,
-                    "measurement": None,
-                    "cause": None,
-                    "supervisorid": None,
-                    "via": None,
-                    "acknowledgement(check)": None,
-                    "inspectiontype(check)": None
-                })
-
-            # Insert into MongoDB using the class methods
-            self.db.batch_insert_defects(processed_defects)
-            self.db.batch_insert_reports(processed_reports)
-
-            self.db.update_video_status(video_id, "Completed")
-            print(f"[DONE] Finished processing video: {file_name}")
-            video_capture.release()
         # shutil.rmtree(folder_path)
         # print(f"[INFO] Upload folder removed: {folder_path}")
         # print(f"[SUCCESS] Finished batch processing for folder: {collection_name}")
@@ -373,3 +357,59 @@ def annotate_image(image_path, boxes, labels, normalized=None):
 def is_normalized_box(boxes):
     """Return True if all coordinates are between 0 and 1."""
     return all(0.0 <= x <= 1.0 for box in boxes for x in box)
+def crop_image(image_path, bbox, identifier=None):
+    print(f"[INFO] Cropping image: {image_path}")
+    
+    image = cv2.imread(image_path)
+    if image is None:
+        raise FileNotFoundError(f"Could not read image: {image_path}")
+
+    h, w = image.shape[:2]
+    print(f"[INFO] Original image size: width={w}, height={h}")
+    print(f"[INFO] Received bbox: {bbox}")
+
+    # Convert to normalized if not already
+    if not is_normalized_box([bbox]):
+        print("[INFO] BBox not normalized. Converting to normalized format.")
+        x_min = bbox[0] / w
+        y_min = bbox[1] / h
+        x_max = bbox[2] / w
+        y_max = bbox[3] / h
+        bbox = [x_min, y_min, x_max, y_max]
+    else:
+        print("[INFO] BBox is already normalized.")
+
+    # Now scale to absolute pixel coordinates
+    x_min = int(bbox[0] * w)
+    y_min = int(bbox[1] * h)
+    x_max = int(bbox[2] * w)
+    y_max = int(bbox[3] * h)
+    print(f"[INFO] Cropping area in pixels: x_min={x_min}, y_min={y_min}, x_max={x_max}, y_max={y_max}")
+
+    if x_max <= x_min or y_max <= y_min:
+        print("[WARNING] Invalid crop dimensions (zero or negative size). Skipping crop.")
+        return None
+
+    cropped_image = image[y_min:y_max, x_min:x_max]
+    print(f"[INFO] Cropped image shape: {cropped_image.shape}")
+
+    if cropped_image.size == 0:
+        print("[ERROR] Cropped image is empty. Skipping save.")
+        return None
+
+    original_image_name, extension = os.path.splitext(os.path.basename(image_path))
+    cropped_image_name = (
+        f"{original_image_name}_cropped_{identifier}{extension}" if identifier else
+        f"{original_image_name}_cropped{extension}"
+    )
+    save_dir = os.path.dirname(image_path)
+    cropped_image_path = os.path.join(save_dir, cropped_image_name)
+    print(f"[INFO] Saving cropped image to: {cropped_image_path}")
+
+    success = cv2.imwrite(cropped_image_path, cropped_image)
+    if not success:
+        print("[ERROR] cv2.imwrite() failed to write the cropped image.")
+        return None
+
+    print("[INFO] Cropped image saved successfully.")
+    return cropped_image_path

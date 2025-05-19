@@ -404,7 +404,7 @@ def split_process(path, lat, lon, db, bid=None):
     elif path.endswith((".jpg", ".jpeg", ".png")):
         os.makedirs(os.path.join("Batches", "Individual_Images"), exist_ok=True)
         process_images(path, lat, lon, db)
-        shutil.copy(path, os.path.join("Batches", "Individual Images"))
+        shutil.copy(path, os.path.join("Batches", "Individual_Images"))
 
     # Folder
     else:
@@ -592,6 +592,7 @@ def make_inferences(db,tog,bid=None, toggle_confidence=False, inspectionDate=Non
                 continue
             print("\n","Printing urls","\n",urls,tog,frame)
             output_lbl, xyxy, confidence, class_id = send_prediction_request(frame, urls[j])
+            print(output_lbl, xyxy, confidence, class_id)
             if output_lbl==False:
                 continue
             if len(output_lbl) == 0: 
@@ -633,7 +634,7 @@ def make_inferences(db,tog,bid=None, toggle_confidence=False, inspectionDate=Non
 def detection_import(image_df, frame, xyxy, confidence, output_lbl, output_id, db, engine_number, severityLevel = None, croppedImgPath_array = None):
     image_id = image_df[image_df['imagePath']==frame]['imageID'].values[0]  
     xyxy = eval(f"{xyxy}")
-
+    print(frame)
     if len(confidence)>1:
         for i in range(len(confidence)):            
             current_max = list(db.defect.find().sort('defectID', -1).limit(1))
