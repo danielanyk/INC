@@ -59,6 +59,12 @@ class EngineManager:
             "classes": ["Drainage","Drainage"],
             "class_ids": [23,23],  # Use a unique DefectTypeID
         },
+        "trenches": {
+            "type": "yolo",
+            "weights": "models/pest.pt",  
+            "classes": ["Trenches","Trenches"],
+            "class_ids": [24,24],
+        },
     }
 
     def __init__(self):

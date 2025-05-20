@@ -30,6 +30,7 @@
     { "DefectTypeID": 20, "DefectName": "Raveling" },
     { "DefectTypeID": 21, "DefectName": "Damaged Kerb" },
     { "DefectTypeID": 22, "DefectName": "Paint Spillage" },
-    { "DefectTypeID": 23, "DefectName": "Drainage" }
+    { "DefectTypeID": 23, "DefectName": "Drainage" },
+    { "DefectTypeID": 23, "DefectName": "Trenches" }
   ]
 }
