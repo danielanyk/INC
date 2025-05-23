@@ -80,8 +80,9 @@ def predict():
     class_ls = []
     global models
     for model in models:
-        with Registry("scope").switch_scope_and_registry("mmdet"):
-            result = da.inference_detector(model, image_path)
+        with torch.inference_mode(), torch.cuda.amp.autocast():
+            with Registry("scope").switch_scope_and_registry("mmdet"):
+                result = da.inference_detector(model, image_path)
 
         xy, conf, class_id, w, h, im = parse(result, image_path)
         ls.append(xy)

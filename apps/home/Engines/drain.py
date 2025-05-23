@@ -34,13 +34,13 @@ model = None
 
 @app.route("/api/load_drainage", methods=["GET"])
 def load_drainage(
-    checkpoint= r'best.pt',
+    checkpoint= r'apps\home\Engines\epoch\B.pt',
 ):
     global model
     if model is None:
         model = YOLO(checkpoint)    
         print('model loaded')
-    return jsonify({"message": "Model ravelling loaded successfully"})
+    return jsonify({"message": "Model Drainage loaded successfully"})
 
 # @app.route("/api/predict", methods=["POST"])
 # def predict(
@@ -112,8 +112,8 @@ def test(
 if __name__ == "__main__":   
     # config_file = "apps/home/Engines/configs/swin-warm-restart-final-raveling.py"
     # checkpoint = r"application\apps\engines\drain_detection_model.pt"
-    checkpoint = r"application\apps\engines\B.pt"
+    checkpoint = r"apps\home\Engines\epoch\B.pt"
     model = YOLO(checkpoint)    
-    app.run(debug=True, port=5009)
+    app.run(debug=False, use_reloader=False, port=5009)
     
 

@@ -6,7 +6,7 @@ from bson import ObjectId
 from urllib.parse import unquote
 import logging
 
-client = MongoClient("mongodb://localhost:27017/FYP")
+client = MongoClient("mongodb://localhost:27017/")
 # db = client["FYP"]
 db=client["newdb"]
 class Users(UserMixin):

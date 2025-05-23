@@ -76,7 +76,7 @@ def login():
 
         user = Users.get_by_username(username)
         userdata = Users.get_role_by_username(username)
-
+        print(f'User: {user}, Userdata: {userdata}')
         if user and user.check_password(password):
             login_user(user)
             access_token = create_access_token(

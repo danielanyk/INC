@@ -61,7 +61,7 @@ class EngineManager:
         },
         "trenches": {
             "type": "yolo",
-            "weights": "models/pest.pt",  
+            "weights": "models/best.pt",  
             "classes": ["Trenches","Trenches"],
             "class_ids": [24,24],
         },
