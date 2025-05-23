@@ -4,7 +4,7 @@ import os
 import subprocess
 from datetime import datetime
 
-MONGO_URI = "mongodb://localhost:27017/FYP"
+MONGO_URI = "mongodb://localhost:27017/newdb"
 BACKUP_DIR = "mongo_backups"
 
 def backup_mongo():

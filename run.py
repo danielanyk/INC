@@ -90,7 +90,7 @@ from celery import Celery, Task
 #     logger.error('Unhandled exception', exc_info=True)
 #     exit(1)
 
-
+import socket
 import logging
 import os
 import json
@@ -146,7 +146,21 @@ def clear_processed_videos():
     with open(Config.BLACK_PROCESSED_VIDEOS, "w") as file:
         json.dump([], file, indent=4)
 
+def get_local_ip():
+    """Get the local IP address of the machine."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # The address does not need to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
 if __name__ == "__main__":
     logger.debug('Starting the Flask application...')
     clear_processed_videos()
-    app.run(host='192.168.0.111', port=5000)
+    local_ip = get_local_ip()
+    app.run(host=local_ip, port=5000)
