@@ -232,3 +232,6 @@ class MongoDB:
 
         self.reports.insert_many(reports, ordered=False)
         print(f"[INFO] Inserted {len(reports)} reports")
+    def batch_insert_images(self, images: list):
+        if images:
+            self.images.insert_many(images)

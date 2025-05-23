@@ -36,7 +36,7 @@
     </div>
     
     <!-- Task Manager Component -->
-    <div class="flex flex-wrap ">
+    <div class="flex flex-wrap admin-only">
       <div class="w-full">
         <div class="border mb-4 dark:bg-gray-800 dark:border-gray-600 rounded-lg">
           <div class="py-3 rounded-t-lg dark:bg-gray-800 dark:text-white px-4">
@@ -159,7 +159,7 @@
                     <th class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">Status</th>
                     <th class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">Start TS</th>
                     <th class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">End TS</th>
-                    <th class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">Logs</th>
+                    <!-- <th class="p-4 text-xs font-medium text-left text-gray-500 uppercase dark:text-gray-400">Logs</th> -->
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
@@ -201,11 +201,13 @@
                       <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">
                         <p class="text-sm mb-0">{{result.date_done|date_format}}</p>
                       </td>      
-                      <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                      <!-- <td class="p-4 text-base font-medium text-gray-900 whitespace-nowrap dark:text-white">
                         <p class="text-sm mb-0">
-                          <a data-bs-toggle="modal" data-bs-target="#view-log-{{result.id}}" href="#">View LOG</a> 
+                          <a href="#" class="view-log-link text-blue-600" data-task-id="{{ result.id }}" data-bs-toggle="modal" data-bs-target="#log-modal">
+                            View LOG
+                          </a> 
                         </p>
-                      </td>                                               
+                      </td>                                                -->
                     </tr>
 
                   {% endfor %}
@@ -220,26 +222,21 @@
 
   </div>
 
-  <div class="modal opacity-0" 
-       id="log-modal" tabindex="-1" role="dialog" aria-labelledby="modal-default" aria-hidden="true">
-    <div class="modal-dialog modal- modal-dialog-centered modal-" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h6 class="modal-title mx-auto" id="modal-title-default">
-            Task LOG
-          </h6>
-        </div>
-        <div class="modal-body">
-          <p id="log-content">
-          </p>
-        </div>
-        <div class="modal-footer text-center">
-          <button type="button" class="inline-block align-middle text-center select-none border font-normal whitespace-no-wrap rounded py-1 px-3 leading-normal no-underline font-normal text-blue-700 bg-transparent mx-auto" data-bs-dismiss="modal">Dismiss</button>
-        </div>
+  <!-- <div class="modal fade" id="log-modal" tabindex="-1" aria-labelledby="log-modal-label" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="log-modal-label">Task Log</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="log-content" class="whitespace-pre-wrap text-sm text-gray-800 dark:text-white">Loading...</pre>
       </div>
     </div>
-  </div>  
+  </div>
+</div>   -->
 </div>
 </main>
+<script src="/static/assets/Admin-Only.js"></script>
 
 {% endblock content %}

@@ -84,7 +84,7 @@
                 </div>
             </div>
         </div>
-        <div id="admin-only" class="p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
+        <div class="admin-only p-4 mb-4 bg-white border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 sm:p-6 dark:bg-gray-800">
     <a href="{{ url_for('authentication_blueprint.register') }}" class="text-primary-700 hover:underline dark:text-primary-500">
         Create New Account
     </a>
@@ -234,7 +234,7 @@
         return confirm("Are you sure you want to change your account type?")
     }
 </script>
-<script>
+<!-- <script>
     document.addEventListener('DOMContentLoaded', function () {
         const userRole = localStorage.getItem('user_role');
         if (userRole !== 'Admin') {
@@ -244,5 +244,6 @@
             }
         }
     });
-</script>
+</script> -->
+<script src="/static/assets/Admin-Only.js"></script>
 {% endblock extra_js %}

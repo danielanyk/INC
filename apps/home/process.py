@@ -1039,6 +1039,7 @@ def make_inferences(db,tog,bid=None, toggle_confidence=False, inspectionDate=Non
                 continue
             print("\n","Printing urls","\n",urls,tog,frame)
             output_lbl, xyxy, confidence, class_id = send_prediction_request(frame, urls[j])
+            print(output_lbl, xyxy, confidence, class_id)
             if output_lbl==False:
                 continue
             if len(output_lbl) == 0: 
@@ -1431,7 +1432,7 @@ def apply_to_image(db, defected_image,inspectionDate=None, bid=None, image_id=No
                     cv2.rectangle(defect_image, (x1, y1), (x2, y2), color, thickness=8)
 
             # Save the annotated image for the current defect type
-            defect_image_path = image_path.replace(".jpg", f"_{defect_type.replace(' ', '_')}_defect.jpg")
+            defect_image_path = image_path.replace("_defect.jpg", f"_{defect_type.replace(' ', '_')}_defect.jpg")
             cv2.imwrite(defect_image_path, cv2.cvtColor(defect_image, cv2.COLOR_RGB2BGR))
 
             print(f"Generated defect image for {defect_type}: {defect_image_path}")
@@ -1439,28 +1440,56 @@ def apply_to_image(db, defected_image,inspectionDate=None, bid=None, image_id=No
             # REPORT SECTION
             # push to report collection using imageID
 
-            defect_classes = {
-                '1': {"class": "bg-emerald-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Alligator Crack"},
-                '2': {"class": "bg-yellow-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Arrow"},
-                '3': {"class": "bg-green-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Block Crack"},
-                '4': {"class": "bg-blue-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Damaged Base Crack"},
-                '5': {"class": "bg-indigo-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Localise Surface Defect"},
-                '6': {"class": "bg-purple-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Multi Crack"},
-                '7': {"class": "bg-pink-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Parallel Lines"},
-                '8': {"class": "bg-red-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Peel Off With Cracks"},
-                '9': {"class": "bg-emerald-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Peeling Off Premix"},
-                '10': {"class": "bg-green-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Pothole With Crack"},
-                '11': {"class": "bg-blue-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Rigid Pavement Crack"},
-                '12': {"class": "bg-indigo-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Single Crack"},
-                '13': {"class": "bg-purple-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Transverse Crack"},
-                '14': {"class": "bg-pink-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Wearing Course Peeling Off"},
-                '15': {"class": "bg-white text-black text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "White Lane"},
-                '16': {"class": "bg-amber-200 text-black text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Yellow Lane"},
-                '17': {"class": "bg-green-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Raveling"},
-                '18': {"class": "bg-blue-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Faded Kerb"},
-                '19': {"class": "bg-indigo-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Paint Spillage"},
-                '20': {"class": "bg-purple-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Drainage"},
-                    }
+            # defect_classes = {
+            #     '1': {"class": "bg-emerald-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Alligator Crack"},
+            #     '2': {"class": "bg-yellow-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Arrow"},
+            #     '3': {"class": "bg-green-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Block Crack"},
+            #     '4': {"class": "bg-blue-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Damaged Base Crack"},
+            #     '5': {"class": "bg-indigo-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Localise Surface Defect"},
+            #     '6': {"class": "bg-purple-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Multi Crack"},
+            #     '7': {"class": "bg-pink-500 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Parallel Lines"},
+            #     '8': {"class": "bg-red-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Peel Off With Cracks"},
+            #     '9': {"class": "bg-emerald-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Peeling Off Premix"},
+            #     '10': {"class": "bg-green-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Pothole With Crack"},
+            #     '11': {"class": "bg-blue-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Rigid Pavement Crack"},
+            #     '12': {"class": "bg-indigo-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Single Crack"},
+            #     '13': {"class": "bg-purple-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Transverse Crack"},
+            #     '14': {"class": "bg-pink-600 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Wearing Course Peeling Off"},
+            #     '15': {"class": "bg-white text-black text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "White Lane"},
+            #     '16': {"class": "bg-amber-200 text-black text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Yellow Lane"},
+            #     '17': {"class": "bg-green-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Raveling"},
+            #     '18': {"class": "bg-blue-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Faded Kerb"},
+            #     '19': {"class": "bg-indigo-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Paint Spillage"},
+            #     '20': {"class": "bg-purple-700 text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md", "text": "Drainage"},
+            #         }
+            color_list = [
+    "bg-red-500", "bg-red-600", "bg-orange-400", "bg-orange-500", "bg-amber-500",
+    "bg-yellow-400", "bg-lime-500", "bg-green-500", "bg-green-600", "bg-emerald-500",
+    "bg-emerald-600", "bg-teal-500", "bg-cyan-500", "bg-sky-500", "bg-blue-500",
+    "bg-blue-600", "bg-indigo-500", "bg-indigo-600", "bg-violet-500", "bg-violet-600",
+    "bg-purple-500", "bg-purple-600", "bg-fuchsia-500", "bg-pink-500", "bg-rose-500",
+    "bg-gray-500", "bg-stone-500", "bg-neutral-500", "bg-zinc-500", "bg-slate-500"
+]
+
+            # Fetch from MongoDB (exclude _id)
+            defecttypes = list(db.defecttype.find({}, {"_id": 0, "defecttypeid": 1, "defecttype": 1}))
+
+            # Remove duplicates by defecttypeid
+            seen_ids = set()
+            unique_defects = []
+            for d in defecttypes:
+                if d['defecttypeid'] not in seen_ids:
+                    unique_defects.append(d)
+                    seen_ids.add(d['defecttypeid'])
+
+            # Build defect_classes dictionary
+            defect_classes = {}
+            for i, defect in enumerate(unique_defects):
+                color = color_list[i % len(color_list)]  # Loop over color list
+                defect_classes[str(defect['defecttypeid'])] = {
+                    "class": f"{color} text-white text-xs font-medium mr-2 px-2.5 py-0.5 rounded-md",
+                    "text": defect['defecttype']
+                }
 
 
             for key, value in defect_classes.items():
@@ -1821,28 +1850,40 @@ def changing_reportdata(db,data):
 
 
 
-defect_classes = {
-    "Alligator Crack": 1,
-    "Arrow": 2,
-    "Block Crack": 3,
-    "Damaged Base Crack": 4,
-    "Localised Surface Defect": 5,
-    "Multi Crack": 6,
-    "Parallel Lines": 7,
-    "Peel Off With Cracks": 8,
-    "Peeling Off Premix": 9,
-    "Pothole With Crack": 10,
-    "Rigid Pavement Crack": 11,
-    "Single Crack": 12,
-    "Transverse Crack": 13,
-    "Wearing Course Peeling Off": 14,
-    "White Lane": 15,
-    "Yellow Lane": 16,
-    "Raveling": 17,
-    "Faded Kerb": 18,
-    "Paint Spillage": 19,
-    "Drainage": 20,
-}
+# defect_classes = {
+#     "Alligator Crack": 1,
+#     "Arrow": 2,
+#     "Block Crack": 3,
+#     "Damaged Base Crack": 4,
+#     "Localised Surface Defect": 5,
+#     "Multi Crack": 6,
+#     "Parallel Lines": 7,
+#     "Peel Off With Cracks": 8,
+#     "Peeling Off Premix": 9,
+#     "Pothole With Crack": 10,
+#     "Rigid Pavement Crack": 11,
+#     "Single Crack": 12,
+#     "Transverse Crack": 13,
+#     "Wearing Course Peeling Off": 14,
+#     "White Lane": 15,
+#     "Yellow Lane": 16,
+#     "Raveling": 17,
+#     "Faded Kerb": 18,
+#     "Paint Spillage": 19,
+#     "Drainage": 20,
+# }
+from pymongo import MongoClient
+
+# Connect to MongoDB
+client = MongoClient("mongodb://localhost:27017")
+db = client["newdb"]
+collection = db["defecttype"]
+
+# Query to fetch only the necessary fields
+records = collection.find({}, {"_id": 0, "defecttype": 1, "defecttypeid": 1})
+
+# Build the dictionary
+defect_classes = {record["defecttype"]: record["defecttypeid"] for record in records}
 
 
 def pipeline(db, inspectionDate, path,tog, user_id = 1, totalframes = 300, toggle_confidence=False, bid=None):

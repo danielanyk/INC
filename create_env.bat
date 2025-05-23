@@ -54,7 +54,7 @@ pip install dropbox
 pip install pynmea2
 pip install pyexiftool
 pip install watchdog
-
+pip install netifaces
 pip install Flask-JWT-Extended
 
 echo Setup complete.

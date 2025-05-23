@@ -12,6 +12,8 @@ class Product:
 
     @staticmethod
     def get_list():
+        db=mongo.db
+        print(db)
         return list(db.products.find())
 
     @staticmethod

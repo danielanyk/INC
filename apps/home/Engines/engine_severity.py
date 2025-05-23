@@ -5,6 +5,7 @@ import os
 import csv
 import time
 import tensorflow as tf
+tf.config.optimizer.set_jit(True)
 import numpy as np
 import subprocess
 
@@ -256,4 +257,5 @@ def clear_console():
 # Main Program
 # ------------------
 if __name__ == "__main__":
+
     app.run(port=5005, debug=False, use_reloader=False,)

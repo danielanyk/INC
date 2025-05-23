@@ -73,7 +73,13 @@ def predict():
     # ==== for mmdetection model ====
     img = mmcv.imread(image_path)
     img_rgb = mmcv.bgr2rgb(img)  # Convert BGR to RGB
-    result = inference_detector(model, img_rgb)
+
+    # Use AMP if on CUDA
+    if torch.cuda.is_available():
+        with torch.cuda.amp.autocast():
+            result = inference_detector(model, img_rgb)
+    else:
+        result = inference_detector(model, img_rgb)
     det_data_sample = DetDataSample()
     det_data_sample.pred_instances = result.pred_instances
     for sample in det_data_sample.pred_instances:

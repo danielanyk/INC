@@ -12,14 +12,18 @@ from flask import (
     jsonify,
     send_from_directory
 )
+import socket
 import zipfile
+import math
+import netifaces
+from collections import defaultdict
 from flask_login import login_required
 from jinja2 import TemplateNotFound
 from apps.home.forms import ProductForm
 from apps.home.models import Product, TaskResult, User, VideoProcessor
 from celery.result import AsyncResult
 from apps import mongo
-from celery import current_app
+from flask import current_app
 import datetime
 from datetime import datetime
 from apps.config import Config
@@ -154,28 +158,34 @@ def check_user_and_defecttype_collection():
     else:
         # Create collection and insert default user
         db.create_collection(collection_name)
-        defect_list = [
-    {"defecttypeid": 1, "defectname": "Alligator Crack"},
-    {"defecttypeid": 2, "defectname": "Arrow"},
-    {"defecttypeid": 3, "defectname": "Block Crack"},
-    {"defecttypeid": 4, "defectname": "Damaged Base Crack"},
-    {"defecttypeid": 5, "defectname": "Localise Surface Defect"},
-    {"defecttypeid": 6, "defectname": "Multi Crack"},
-    {"defecttypeid": 7, "defectname": "Parallel Lines"},
-    {"defecttypeid": 8, "defectname": "Peel Off With Cracks"},
-    {"defecttypeid": 9, "defectname": "Peeling Off Premix"},
-    {"defecttypeid": 10, "defectname": "Pothole With Crack"},
-    {"defecttypeid": 11, "defectname": "Rigid Pavement Crack"},
-    {"defecttypeid": 12, "defectname": "Single Crack"},
-    {"defecttypeid": 13, "defectname": "Transverse Crack"},
-    {"defecttypeid": 14, "defectname": "Wearing Course Peeling Off"},
-    {"defecttypeid": 15, "defectname": "White Lane"},
-    {"defecttypeid": 16, "defectname": "Yellow Lane"},
-    {"defecttypeid": 17, "defectname": "Raveling"},
-    {"defecttypeid": 18, "defectname": "Faded Kerb"},
-    {"defecttypeid": 19, "defectname": "Paint Spillage"},
-    {"defecttypeid": 20, "defectname": "Drainage"},
-]
+#         defect_list = [
+#     {"defecttypeid": 1, "defectname": "Alligator Crack"},
+#     {"defecttypeid": 2, "defectname": "Arrow"},
+#     {"defecttypeid": 3, "defectname": "Block Crack"},
+#     {"defecttypeid": 4, "defectname": "Damaged Base Crack"},
+#     {"defecttypeid": 5, "defectname": "Localise Surface Defect"},
+#     {"defecttypeid": 6, "defectname": "Multi Crack"},
+#     {"defecttypeid": 7, "defectname": "Parallel Lines"},
+#     {"defecttypeid": 8, "defectname": "Peel Off With Cracks"},
+#     {"defecttypeid": 9, "defectname": "Peeling Off Premix"},
+#     {"defecttypeid": 10, "defectname": "Pothole With Crack"},
+#     {"defecttypeid": 11, "defectname": "Rigid Pavement Crack"},
+#     {"defecttypeid": 12, "defectname": "Single Crack"},
+#     {"defecttypeid": 13, "defectname": "Transverse Crack"},
+#     {"defecttypeid": 14, "defectname": "Wearing Course Peeling Off"},
+#     {"defecttypeid": 15, "defectname": "White Lane"},
+#     {"defecttypeid": 16, "defectname": "Yellow Lane"},
+#     {"defecttypeid": 17, "defectname": "Raveling"},
+#     {"defecttypeid": 18, "defectname": "Faded Kerb"},
+#     {"defecttypeid": 19, "defectname": "Paint Spillage"},
+#     {"defecttypeid": 20, "defectname": "Drainage"},
+# ]
+        records = db.defecttype.find({}, {"_id": 0, "defecttypeid": 1, "defecttype": 1})
+
+        # Convert to desired format
+        defect_list = [{"defecttypeid": r["defecttypeid"], "defectname": r["defecttype"]} for r in records]
+
+
 
         db[collection_name].insert_many(defect_list)
         return "created defecttype"
@@ -828,8 +838,8 @@ def batchStatus(batchID):
 @blueprint.route("/charts/", methods=["GET"])
 def charts():
     products = [
-        {"name": product.name, "price": product.price} for product in Product.get_list()
-    ]
+    {"name": product_dict['name'], "price": product_dict['price']} 
+    for product_dict in Product.get_json_list()]
     context = {}
     context["parent"] = "apps"
     context["segment"] = "charts"
@@ -882,22 +892,57 @@ def run_script_route():
 
 
 @blueprint.route('/tasks', methods=['GET', 'POST'])
+# def tasks():
+#     from apps.home.tasks import get_scripts
+#     task_results_collection = db.task_result
+#     scripts, ErrInfo = get_scripts()
+#     context = {
+#         'cfgError' : ErrInfo,
+#         'scripts'  : scripts,
+#         'tasks'	   : TaskResult.get_latest(),
+#         'segment'  : 'tasks',
+#         'parent'   : 'apps',
+#     }
+#     # task_results = TaskResult.get_all()
+#     task_results = list(task_results_collection.find())
+#     context["task_results"] = task_results
+#     return render_template("pages/tasks.html", **context)
 def tasks():
     from apps.home.tasks import get_scripts
     task_results_collection = db.task_result
     scripts, ErrInfo = get_scripts()
+
+    # Get and sort task results
+    task_results = list(task_results_collection.find().sort("date_created", -1))
+    print(task_results)
+    # Optional: convert timestamp strings to datetime objects
+    from datetime import datetime
+    for r in task_results:
+        for ts in ['date_created', 'date_done']:
+            if ts in r and isinstance(r[ts], str):
+                try:
+                    r[ts] = datetime.fromisoformat(r[ts])
+                except ValueError:
+                    pass
+
     context = {
         'cfgError' : ErrInfo,
         'scripts'  : scripts,
-        'tasks'	   : TaskResult.get_latest(),
+        'tasks'    : TaskResult.get_latest(),
+        'task_results': task_results,
         'segment'  : 'tasks',
         'parent'   : 'apps',
     }
-    # task_results = TaskResult.get_all()
-    task_results = list(task_results_collection.find())
-    context["task_results"] = task_results
+
     return render_template("pages/tasks.html", **context)
 
+# @blueprint.route('/get_log/<task_id>')  
+# def get_log(task_id):
+#     log_path = os.path.join(current_app.config['CELERY_SCRIPTS_DIR'], f'{task_id}.log')
+#     if os.path.exists(log_path):
+#         with open(log_path, 'r') as f:
+#             return f.read()
+#     return 'Log not found.', 404
 
 # Custom Filter
 @blueprint.app_template_filter("get_result_field")
@@ -1434,7 +1479,8 @@ def open_annotator():
         return "No file paths provided"
     # Validate each file path
     for i, path in enumerate(file_paths):
-        full_path = os.path.join(root_dir, 'Batches', path)
+        relative_path = os.path.normpath(path)
+        full_path = os.path.join(root_dir, 'Batches', relative_path)
     
         # Initialize json_data for each image file
         json_data = {
@@ -1466,9 +1512,10 @@ def open_annotator():
     
         # Append json_data for the current image to json_annotations
         json_annotations.append(json_data)
-        
-        if not os.path.isfile(os.path.join(root_dir, 'Batches', path)) or imghdr.what(os.path.join(root_dir, 'Batches', path)) is None:  # Check if the file exists
-            return f"File not found: {path}"
+        print('Full path:', full_path)
+        print('Exists?', os.path.isfile(full_path))
+        if not os.path.isfile(full_path):
+            return jsonify({'error': f"File not found: {full_path}"}), 400
         else:
             file_paths[i] = full_path
 
@@ -1553,7 +1600,7 @@ def open_annotator():
 
     # Delete temp directory
     shutil.rmtree(tempdir)
-    return "success"
+    # return "success"
     
 @blueprint.route("/update_editor_table", methods=['GET'])
 def update_editor_table(start=0, end=30):
@@ -2173,9 +2220,178 @@ def list_reports():
             if os.path.isdir(os.path.join(REPORTS_DIR, f))
         ])
         return jsonify({"folders": folders})
+# def list_reports():
+    # folder = request.args.get("folder")
+    # page = int(request.args.get("page", 1))
+    # per_page = 10
+
+    # print(f"[list_reports] folder={folder}, page={page}")
+
+    # if not folder:
+    #     folders = sorted([
+    #         f for f in os.listdir(REPORTS_DIR)
+    #         if os.path.isdir(os.path.join(REPORTS_DIR, f))
+    #     ])
+    #     print(f"[list_reports] folders found: {folders}")
+    #     return jsonify({"folders": folders})
+
+    # # Find images in the folder
+    # regex_pattern = rf"[\\/]{folder}(_|$)"
+    # images_cursor = db.images.find({"Path": {"$regex": regex_pattern, "$options": "i"}})
+    # image_ids = [img["ImageID"] for img in images_cursor]
+    # images = list(images_cursor) 
+    # print(images)
+    # print(f"[list_reports] Found {len(image_ids)} images for folder '{folder}', images {images_cursor}")
+
+    # if not image_ids:
+    #     # No images found - return empty result early to avoid further queries
+    #     print("[list_reports] No images found, returning empty file list")
+    #     return jsonify({
+    #         "folder": folder,
+    #         "files": [],
+    #         "page": page,
+    #         "total_pages": 0
+    #     })
+
+    # # Find defects linked to these images
+    # defects_cursor = db.defects.find({"ImageID": {"$in": image_ids}})
+    # defect_ids = [defect["DefectID"] for defect in defects_cursor]
+    # print(f"[list_reports] Found {len(defect_ids)} defects for these images")
+
+    # if not defect_ids:
+    #     print("[list_reports] No defects found, returning empty file list")
+    #     return jsonify({
+    #         "folder": folder,
+    #         "files": [],
+    #         "page": page,
+    #         "total_pages": 0
+    #     })
+
+    # total_reports = db.reports.count_documents({"DefectID": {"$in": defect_ids}})
+    # print(f"[list_reports] Total reports count: {total_reports}")
+
+    # reports_cursor = db.reports.find({"DefectID": {"$in": defect_ids}}).skip((page - 1) * per_page).limit(per_page)
+    # grouped = defaultdict(lambda: {"defects": []})
+
+    # images = {img["ImageID"]: img for img in db.images.find({"ImageID": {"$in": image_ids}})}
+    # defects = {defect["DefectID"]: defect for defect in db.defects.find({"DefectID": {"$in": defect_ids}})}
+
+    # count_reports_processed = 0
+    # for report in reports_cursor:
+    #     defect = defects.get(report["DefectID"])
+    #     if not defect:
+    #         print(f"[list_reports] Defect not found for DefectID {report['DefectID']}")
+    #         continue
+    #     image = images.get(defect["ImageID"])
+    #     if not image:
+    #         print(f"[list_reports] Image not found for ImageID {defect['ImageID']}")
+    #         continue
+
+    #     image_id = defect["ImageID"]
+
+    #     if "imagePath" not in grouped[image_id]:
+    #         grouped[image_id]["imagePath"] = image.get("ImagePath")
+    #         grouped[image_id]["imageID"] = image_id
+
+    #     grouped[image_id]["defects"].append({
+    #         "reportID": report.get("ReportID"),
+    #         "defectID": report.get("DefectID"),
+    #         "status": report.get("Status"),
+    #         "generationTime": report.get("generationtime"),
+    #         "latitude": defect.get("Latitude"),
+    #         "longitude": defect.get("Longitude"),
+    #         "defectTypeID": defect.get("DefectTypeID"),
+    #     })
+
+    #     count_reports_processed += 1
+
+    # print(f"[list_reports] Processed {count_reports_processed} reports")
+
+    # result_list = list(grouped.values())
+
+    # return jsonify({
+    #     "folder": folder,
+    #     "files": result_list,
+    #     "page": page,
+    #     "total_pages": math.ceil(total_reports / per_page)
+    # })
 @blueprint.route('/reports/<folder>/<path:filename>')
 def serve_report_file(folder, filename):
     safe_folder = secure_filename(folder)
     report_folder = os.path.join(REPORTS_DIR, safe_folder)
     
     return send_from_directory(report_folder, filename, as_attachment=False)
+
+PERMISSIONS_FILE = "IPpermissions.json"
+
+def load_ip_lists():
+    if not os.path.exists(PERMISSIONS_FILE):
+        return [], []
+    with open(PERMISSIONS_FILE, 'r') as f:
+        try:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data.get('whitelist', []), data.get('blacklist', [])
+            else:
+                print("IPpermissions.json is not a valid dictionary.")
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
+    return [], []
+
+def save_ip_lists(whitelist, blacklist):
+    data = {'whitelist': whitelist, 'blacklist': blacklist}
+    with open(PERMISSIONS_FILE, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def get_local_ips():
+    local_ips = {"127.0.0.1", "::1"}
+    for iface in netifaces.interfaces():
+        addresses = netifaces.ifaddresses(iface).get(netifaces.AF_INET, [])
+        for addr in addresses:
+            local_ips.add(addr['addr'])
+    return local_ips
+
+def ip_whitelist_only(view_func):
+    def wrapper(*args, **kwargs):
+        whitelist, blacklist = load_ip_lists()
+        local_ips = get_local_ips()
+        requester_ip = request.remote_addr
+
+        # Host device is always allowed
+        if requester_ip in local_ips:
+            return view_func(*args, **kwargs)
+
+        # Other IPs must be in whitelist AND not in blacklist
+        if requester_ip in whitelist and requester_ip not in blacklist:
+            return view_func(*args, **kwargs)
+
+        return f"Access Denied: Your IP ({requester_ip}) is not whitelisted.", 403
+    wrapper.__name__ = view_func.__name__
+    return wrapper
+
+@blueprint.route('/IP_access', methods=['GET', 'POST'])
+@ip_whitelist_only
+def ip_access():
+    whitelist, blacklist = load_ip_lists()
+    rules = {'whitelist': whitelist, 'blacklist': blacklist}
+
+    if request.method == 'POST':
+        ip = request.form.get('ip')
+        list_type = request.form.get('list_type')
+        action = request.form.get('action')
+
+        if list_type == 'whitelist':
+            if action == 'add' and ip not in whitelist:
+                whitelist.append(ip)
+            elif action == 'remove' and ip in whitelist:
+                whitelist.remove(ip)
+        elif list_type == 'blacklist':
+            if action == 'add' and ip not in blacklist:
+                blacklist.append(ip)
+            elif action == 'remove' and ip in blacklist:
+                blacklist.remove(ip)
+
+        save_ip_lists(whitelist, blacklist)
+        return redirect(url_for('home_blueprint.ip_access'))
+
+    return render_template('pages/ManageIP.html', rules=rules)

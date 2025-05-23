@@ -14,7 +14,7 @@ class ReportGenerator:
         page1.insert_text((180, 100), f'{data["defectId"]}', fontsize=10)
         page1.insert_text((470, 100), f'{data["timestamp"]}', fontsize=10)
         page1.insert_text((270, 160), f'{data["roadType"]}', fontsize=10)
-        page1.insert_text((470, 130), f'{data.get("severity", "N/A")}', fontsize=10)
+        page1.insert_text((470, 130), f'{data.get("severity", "Moderate")}', fontsize=10)
         page1.insert_text(
             (210, 190), f"{address['ROAD']}, {address['POSTALCODE']}", fontsize=10
         )

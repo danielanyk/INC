@@ -66,10 +66,21 @@
           id="currentFolderName"
           class="text-lg font-bold dark:text-white mb-3"
         ></h3>
-        <ul
-          id="fileList"
-          class="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-1"
-        ></ul>
+        <div class="overflow-x-auto">
+          <table
+            class="min-w-full text-left text-sm text-gray-700 dark:text-gray-300"
+          >
+            <thead class="bg-gray-100 dark:bg-gray-700">
+              <tr>
+                <th class="px-4 py-2">File Name</th>
+              </tr>
+            </thead>
+            <tbody
+              id="fileList"
+              class="divide-y divide-gray-200 dark:divide-gray-600"
+            ></tbody>
+          </table>
+        </div>
         <div
           id="paginationButtons"
           class="flex items-center gap-4 text-sm mt-4 dark:text-white"
@@ -84,18 +95,45 @@
   <div class="flex flex-wrap gap-4">
     <!-- Report Folder List -->
     <div class="w-full md:w-1/3">
-      <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 border border-gray-300 dark:border-gray-600">
+      <div
+        class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 border border-gray-300 dark:border-gray-600"
+      >
         <h3 class="text-lg font-bold dark:text-white mb-2">Report Folders</h3>
-        <ul id="reportFolderUl" class="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-1"></ul>
+        <ul
+          id="reportFolderUl"
+          class="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-1"
+        ></ul>
       </div>
     </div>
 
     <!-- Report File List -->
     <div id="reportFileSection" class="w-full md:w-2/3 hidden">
-      <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 border border-gray-300 dark:border-gray-600">
-        <h3 id="currentReportFolderName" class="text-lg font-bold dark:text-white mb-3"></h3>
-        <ul id="reportFileList" class="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-1"></ul>
-        <div id="reportPaginationButtons" class="flex items-center gap-4 text-sm mt-4 dark:text-white"></div>
+      <div
+        class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 border border-gray-300 dark:border-gray-600"
+      >
+        <h3
+          id="currentReportFolderName"
+          class="text-lg font-bold dark:text-white mb-3"
+        ></h3>
+        <div class="overflow-x-auto">
+          <table
+            class="min-w-full text-left text-sm text-gray-700 dark:text-gray-300"
+          >
+            <thead class="bg-gray-100 dark:bg-gray-700">
+              <tr>
+                <th class="px-4 py-2">Report File</th>
+              </tr>
+            </thead>
+            <tbody
+              id="reportFileList"
+              class="divide-y divide-gray-200 dark:divide-gray-600"
+            ></tbody>
+          </table>
+        </div>
+        <div
+          id="reportPaginationButtons"
+          class="flex items-center gap-4 text-sm mt-4 dark:text-white"
+        ></div>
       </div>
     </div>
   </div>
@@ -149,14 +187,19 @@
         currentFolderName.innerText = `Files in \"${folder}\"`;
 
         (data.files || []).forEach((file) => {
-          const li = document.createElement("li");
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
           const a = document.createElement("a");
-          a.href = `/files/${encodeURIComponent(currentFolder)}/${encodeURIComponent(file)}`;
+          a.href = `/files/${encodeURIComponent(
+            currentFolder
+          )}/${encodeURIComponent(file)}`;
           a.innerText = file;
-          a.target = "_blank"; // Opens in new tab
+          a.target = "_blank";
           a.className = "text-blue-500 hover:underline";
-          li.appendChild(a);
-          fileList.appendChild(li);
+          td.className = "px-4 py-2";
+          td.appendChild(a);
+          tr.appendChild(td);
+          fileList.appendChild(tr);
         });
 
         if (data.total_pages > 1) {
@@ -219,7 +262,7 @@
           });
       }
     });
-    let currentReportFolder = "";
+  let currentReportFolder = "";
   let currentReportPage = 1;
 
   function loadReportFolders() {
@@ -256,8 +299,12 @@
       .then((data) => {
         const fileSection = document.getElementById("reportFileSection");
         const fileList = document.getElementById("reportFileList");
-        const currentFolderName = document.getElementById("currentReportFolderName");
-        const paginationDiv = document.getElementById("reportPaginationButtons");
+        const currentFolderName = document.getElementById(
+          "currentReportFolderName"
+        );
+        const paginationDiv = document.getElementById(
+          "reportPaginationButtons"
+        );
 
         fileList.innerHTML = "";
         paginationDiv.innerHTML = "";
@@ -266,14 +313,19 @@
         currentFolderName.innerText = `Files in \"${folder}\"`;
 
         (data.files || []).forEach((file) => {
-          const li = document.createElement("li");
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
           const a = document.createElement("a");
-          a.href = `/reports/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`;
+          a.href = `/reports/${encodeURIComponent(folder)}/${encodeURIComponent(
+            file
+          )}`;
           a.innerText = file;
           a.target = "_blank";
           a.className = "text-blue-500 hover:underline";
-          li.appendChild(a);
-          fileList.appendChild(li);
+          td.className = "px-4 py-2";
+          td.appendChild(a);
+          tr.appendChild(td);
+          fileList.appendChild(tr);
         });
 
         if (data.total_pages > 1) {
@@ -296,11 +348,76 @@
           "<li class='text-red-500'>Unable to fetch report files</li>";
       });
   }
-    document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", () => {
     loadFolders(); // Initial load
     loadReportFolders();
-    setInterval(loadFolders, 10000); // Refresh every 10 seconds
-    setInterval(loadReportFolders, 10000); // Refresh every 10 seconds
+    setInterval(loadFolders, 20000); // Refresh every 20 seconds
+    setInterval(loadReportFolders, 20000); // Refresh every 20 seconds
   });
 </script>
 {% endblock %}
+<!-- fetch(`/list-reports?folder=${encodeURIComponent(folder)}&page=${page}`)
+    .then((res) => res.json())
+    .then((data) => {
+      const fileSection = document.getElementById("reportFileSection");
+      const fileList = document.getElementById("reportFileList");
+      const currentFolderName = document.getElementById("currentReportFolderName");
+      const paginationDiv = document.getElementById("reportPaginationButtons");
+
+      fileList.innerHTML = "";
+      paginationDiv.innerHTML = "";
+      fileSection.classList.remove("hidden");
+
+      currentFolderName.innerText = `Files in "${folder}"`;
+
+      // Defensive: check if data.files exists and is an array
+      if (!Array.isArray(data.files)) {
+        console.warn("No files found in response.");
+        return;
+      }
+
+      data.files.forEach((item) => {
+        const tr = document.createElement("tr");
+
+        // Provide default/fallbacks in case some fields are missing
+        const imagePath = item.imagePath || "N/A";
+        const imageID = item.imageID || "";
+        const defecttype = item.defecttype || "Unknown";
+        const defectstatus = item.defectstatus || "unchecked";
+        const longitude = item.longitude || "";
+        const latitude = item.latitude || "";
+
+        const btnID = `report-${imageID}`;
+        const imgpath = encodeURIComponent(imagePath);
+
+        let reportBtnHTML = "";
+        let viewBtnHTML = "";
+
+        if (defectstatus.toLowerCase() === "checked") {
+          reportBtnHTML = `<a href='/makereport?imgpath=${imgpath}&defecttype=${encodeURIComponent(defecttype)}&status=checked&lon=${longitude}&lat=${latitude}' id="${btnID}" class="inline-flex items-center px-2 py-1 text-xs font-semibold bg-yellow-500 text-white rounded hover:bg-yellow-600">Edit Report</a>`;
+          viewBtnHTML = `<a href="/viewreport?imageID=${encodeURIComponent(imageID)}&defecttype=${encodeURIComponent(defecttype)}" class="inline-flex items-center px-2 py-1 text-xs font-semibold bg-blue-500 text-white rounded hover:bg-blue-600">View Report</a>`;
+        } else {
+          reportBtnHTML = `<a href='/makereport?imgpath=${imgpath}&defecttype=${encodeURIComponent(defecttype)}&status=unchecked&lon=${longitude}&lat=${latitude}' id="${btnID}" class="inline-flex items-center px-2 py-1 text-xs font-semibold bg-green-500 text-white rounded hover:bg-green-600">Make Report</a>`;
+          // Adjust this URL depending on your actual image serving setup
+          viewBtnHTML = `<a href="/images/${encodeURIComponent(folder)}/${encodeURIComponent(imagePath)}" target="_blank" class="inline-flex items-center px-2 py-1 text-xs font-semibold bg-gray-500 text-white rounded hover:bg-gray-600">View Image</a>`;
+        }
+
+        tr.innerHTML = `
+          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">${imagePath}</td>
+          <td class="px-4 py-2 text-sm text-gray-700 dark:text-white">${defecttype}</td>
+          <td class="px-4 py-2 text-sm text-gray-700 dark:text-white">${defectstatus}</td>
+          <td class="px-4 py-2">${viewBtnHTML}</td>
+          <td class="px-4 py-2">${reportBtnHTML}</td>
+        `;
+
+        fileList.appendChild(tr);
+      });
+
+      // TODO: Add pagination buttons if needed using data.page and data.total_pages
+      // Example: renderPaginationButtons(data.total_pages, data.page, paginationDiv);
+    })
+    .catch((err) => {
+      console.error("Error loading report files:", err);
+      alert("Failed to load report files.");
+    });
+} -->
