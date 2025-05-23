@@ -92,6 +92,11 @@ def check_defecttype_collection():
             "Raveling": 17,
             "Faded Kerb": 18,
             "Paint Spillage": 19,
+            "Drainage":20,
+            "Trenches":21,
+            "Keep Left Sign":22,
+            "Pedestrian Crossing Sign":23,
+            "Stop Sign":24
         }
 
         db[collection_name].insert_many([
@@ -116,8 +121,8 @@ def check_roles_collection():
     return jsonify(roles)
 
 from werkzeug.security import generate_password_hash
-@blueprint.route('/check_user_collection')
-def check_user_collection():
+@blueprint.route('/check_user_and_defecttype_collection')
+def check_user_and_defecttype_collection():
     collection_name = "users"
     default_user = {
     "userid": 1,
@@ -135,12 +140,45 @@ def check_user_collection():
             return "users existing"
         else:
             db.users.insert_one(default_user)
-            return "inserted default user into existing users collection"
+            print( "inserted default user into existing users collection")
     else:
         # Create collection and insert default user
         db.create_collection(collection_name)
         db.users.insert_one(default_user)
-        return "created users and inserted default user"
+        print( "created users and inserted default user")
+
+
+    collection_name = "defecttype"
+    if collection_name in db.list_collection_names():
+        return "found defecttype"
+    else:
+        # Create collection and insert default user
+        db.create_collection(collection_name)
+        defect_list = [
+    {"defecttypeid": 1, "defectname": "Alligator Crack"},
+    {"defecttypeid": 2, "defectname": "Arrow"},
+    {"defecttypeid": 3, "defectname": "Block Crack"},
+    {"defecttypeid": 4, "defectname": "Damaged Base Crack"},
+    {"defecttypeid": 5, "defectname": "Localise Surface Defect"},
+    {"defecttypeid": 6, "defectname": "Multi Crack"},
+    {"defecttypeid": 7, "defectname": "Parallel Lines"},
+    {"defecttypeid": 8, "defectname": "Peel Off With Cracks"},
+    {"defecttypeid": 9, "defectname": "Peeling Off Premix"},
+    {"defecttypeid": 10, "defectname": "Pothole With Crack"},
+    {"defecttypeid": 11, "defectname": "Rigid Pavement Crack"},
+    {"defecttypeid": 12, "defectname": "Single Crack"},
+    {"defecttypeid": 13, "defectname": "Transverse Crack"},
+    {"defecttypeid": 14, "defectname": "Wearing Course Peeling Off"},
+    {"defecttypeid": 15, "defectname": "White Lane"},
+    {"defecttypeid": 16, "defectname": "Yellow Lane"},
+    {"defecttypeid": 17, "defectname": "Raveling"},
+    {"defecttypeid": 18, "defectname": "Faded Kerb"},
+    {"defecttypeid": 19, "defectname": "Paint Spillage"},
+    {"defecttypeid": 20, "defectname": "Drainage"},
+]
+
+        db[collection_name].insert_many(defect_list)
+        return "created defecttype"
 
 @blueprint.route("/")
 @blueprint.route("/index")
@@ -299,18 +337,36 @@ def datatables():
 
 @blueprint.route("/update_batch_table", methods=["GET"])
 def update_table():
-    batches = db.batch.find({}, {"_id": 0})
+    print('calling batch table')
+    user_id = int(request.args.get('userid'))
+    if not user_id:
+        return jsonify([])  # or return an appropriate error
+
+    # Filter videos where uploadbyuserid matches the user_id
+    batches = list(db.videos.find({"uploadbyuserid": user_id}, {"_id": 0}))
+    # print('batches', batches)
     batches_list = []
+
     for batch in batches:
-        user = db.user.find_one(
-            {"userID": batch["userID"]}, {"_id": 0, "displayname": 1}
+        user = db.users.find_one(
+            {"userid": batch.get("uploadbyuserid")}, {"_id": 0, "username": 1}
         )
-        if user:
-            batch["displayname"] = user["displayname"]
-        else:
-            batch["displayname"] = "User"
+        batch["username"] = user["username"] if user else "User"
         batches_list.append(batch)
+    # print('batch list',batches_list)
     return jsonify(batches_list)
+    # batches = db.videos.find({}, {"_id": 0})
+    # batches_list = []
+    # for batch in batches:
+    #     user = db.user.find_one(
+    #         {"userID": batch["userID"]}, {"_id": 0, "displayname": 1}
+    #     )
+    #     if user:
+    #         batch["displayname"] = user["displayname"]
+    #     else:
+    #         batch["displayname"] = "User"
+    #     batches_list.append(batch)
+    # return jsonify(batches_list)
 
 #kyui
 # @cache
@@ -630,7 +686,7 @@ def update_image_table(batchID):
         }
     ]
 
-    results = db.image.aggregate(pipeline)
+    results = db.images.aggregate(pipeline)
 # {
 #     "$project": {
 #         "_id": 0,
@@ -709,14 +765,17 @@ def process():
     total_frames = data["total_frames"] 
     file_path = data["path"]
     bid = data["bid"]
+    print('data',data)
+    # userid = data.get('user_id')
+    
+
     print("request recieved")
     pipeline(
         db,
         inspectionDate=data["inspectionDate"],
         path=os.path.join(ConfigData.VIDEO_LOCATION, file_path),
         tog=data['toggle'],
-        lon=None,
-        lat=None,
+        # userid=userid,
         totalframes=total_frames,
         bid=bid
         
@@ -734,7 +793,7 @@ def stop_process():
 @blueprint.route('/get_image_details/<id>')
 def get_image_details(id):
     id = int(id)
-    image_details = db.image.find_one({"imageID": id})
+    image_details = db.images.find_one({"imageID": id})
     
     if image_details:
 
@@ -755,16 +814,15 @@ def serve_file(filename):
 @blueprint.route("/batchStatus/<batchID>", methods=["GET"])
 def batchStatus(batchID):
     batchID = int(batchID)
-    batch = db.batch.find_one({"batchID": batchID})
+    batch = db.videos.find_one({"videoid": batchID})
     if batch:
         return jsonify(
             {
-                "status": batch.get("status"),
-                "framesProcessed": batch.get("framesProcessed"),
+                "status": batch.get("processingstatus")
             }
         )
     else:
-        return jsonify({"framesProcessed": 0, "status": "Waiting"})
+        return jsonify({"status": "Waiting"})
 
 
 @blueprint.route("/charts/", methods=["GET"])
@@ -1538,7 +1596,7 @@ def update_editor_table(start=0, end=30):
     }
 ]
 
-    results = db.image.aggregate(pipeline)
+    results = db.images.aggregate(pipeline)
     return jsonify(list(results)[start:end])
 
 @blueprint.route("/get_filtered_results", methods=['GET'])
@@ -1777,7 +1835,7 @@ def get_filtered_results(startDate, endDate, defectList, start=0, end=30):
     }
 ]
         
-    results = db.image.aggregate(pipeline)
+    results = db.images.aggregate(pipeline)
     results_list = list(results) 
     print(results_list[start:end])  
     return jsonify(results_list[start:end])

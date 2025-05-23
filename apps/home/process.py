@@ -24,7 +24,9 @@ from apps.home.report import get_reports, generate_report, get_bbox
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
-from apps.home.Tools.gv2f import extract_frames_with_metadata
+from apps.home.Tools.gv2f import extract_frames_with_metadata,extract_video_metadata
+from apps.home.onemap_service import reverse_geocode
+
 app = Flask(__name__)
 
 app.config["MONGO_URI"] = "mongodb://localhost:27017/FYP"
@@ -44,28 +46,42 @@ def newBatch(path, totalframes, user_id, db):
     new_batch_id = (latest_batch_id + 1) if latest_batch != 0 else 1
     
     # Get the current time
-
+#insers new batch with batchid
 def new_batch(path, totalframes, user_id, db):
     # Fetch the latest batch ID safely
-    latest_batch = list(db.batch.find().sort('batchID', -1).limit(1))
-    new_batch_id = latest_batch[0]['batchID'] + 1 if latest_batch else 1
+    latest_batch = list(db.videos.find().sort('videoid', -1).limit(1))
+    new_batch_id = latest_batch[0]['videoid'] + 1 if latest_batch else 1
     current_time = datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S")
+    folder = os.path.dirname(path)
+    videoname = os.path.basename(path)
 
+    print("Folder:", folder)
+    print("Video name:", videoname)
     try:
-        db.batch.insert_one({
-            "batchID": new_batch_id,
-            "batchPath": path,
-            "userID": user_id,
-            "batchStartProcessing": current_time,
-            "batchFinishProcessing": "-",
-            "status": "pre-processing",
-            "totalFrames": totalframes,
-            "framesProcessed": 0
+        # db.batch.insert_one({
+        #     "batchID": new_batch_id,
+        #     "batchPath": path,
+        #     "userID": user_id,
+        #     "batchStartProcessing": current_time,
+        #     "batchFinishProcessing": "-",
+        #     "status": "pre-processing",
+        #     "totalFrames": totalframes,
+        #     "framesProcessed": 0
+        # })
+        db.videos.insert_one({
+            "videoid": new_batch_id,
+            "uploadbyuserid": user_id,
+            "processingstatus": "pre-processing",
+            "foldername": folder,
+            "uploaddatetime": current_time,
+            "videoname": videoname,
+            "totalframes":totalframes,
+            'framesprocessed':0
         })
-
     except Exception as e:
         return {'error': str(e)}, 500
-    return {'message': 'Batch created successfully', 'batch_id': new_batch_id}
+    print('before return')
+    return {'message': 'Batch created successfully', 'videoid': new_batch_id}
 
 # Video Splitting Functions
 def run_command(*args):
@@ -83,11 +99,13 @@ def run_command(*args):
     finally:
         process.terminate()
 
-def get_town(frame_data, lat, lon, output_dir, db):
+def get_town(frame_data, lat, lon, output_dir,framepath, db):
+    print('in get town')
     if frame_data is None:
         frame_data = pd.DataFrame()
         frame_data["lat"] = [lat]
         frame_data["lon"] = [lon]
+        frame_data["file_name"] = [framepath]
     
     map = gpd.read_file(
         "apps/home/mygeodata/MasterPlan2019PlanningAreaBoundaryNoSea-polygon.shp"
@@ -96,16 +114,16 @@ def get_town(frame_data, lat, lon, output_dir, db):
     frame_data["Town"] = "Not Specified"
     frame_data["roadType"] = "Asphalt"
     frame_data["road"] = "Not Specified"
-
+    frame_data["postal"] = "Not Specified"
     # replace the coordinates below with LONGITUDE and LATITUDE
     try:
-        image_id = db.image.find_one(sort=[("imageID", -1)])["imageID"] 
+        image_id = db.images.find_one(sort=[("imageid", -1)])["imageid"] 
     except:
         image_id = 0
     for i in range(len(frame_data["lon"])):
         # image_ID
         image_id = image_id + 1
-        frame_data.at[i, "imageID"] = int(image_id)
+        frame_data.at[i, "imageid"] = int(image_id)
         # file_name update
         frame_data.at[i, 'file_name'] = os.path.join(output_dir, frame_data.at[i, 'file_name'])
 
@@ -114,22 +132,25 @@ def get_town(frame_data, lat, lon, output_dir, db):
         district = point.within(polygon["geometry"])
         district_name = polygon.loc[district[district == True].index]["PLN_AREA_N"].values[0]
         frame_data.at[i, "town"] = district_name
-
         #Road Information 
         finder = Finder("Roads.csv")        
         lat, lon, road, roadType = finder.find_closest_road(frame_data.at[i, "lat"], frame_data.at[i, "lon"])
+        road,postal=reverse_geocode(frame_data.at[i, "lat"],frame_data.at[i, "lon"])
+        print('lat',lat,'lat2',frame_data.at[i, "lat"])
+        print('lon',lon,'lon2',frame_data.at[i, "lon"])
+        print('postal: ',postal)
         frame_data.at[i, "road"] = road
         frame_data.at[i, "roadType"] = roadType
-
+        frame_data.at[i, "postal"] = postal
 
     frame_data["datetime"] = datetime.datetime.now().strftime("%d %b %Y, %H:%M:%S")
-    new_order = ["imageID", "file_name", "lat", "lon", "town", "road", "roadType", "datetime"]
+    print("frame_postal before new order\n",frame_data)
+    new_order = ["imageid", "file_name", "lat", "lon", "town", "road", "roadType", "datetime"]
     rename = {"file_name" : "imagePath", "lat": "latitude", "lon": "longitude"}
-    frame_data['imageID'] = frame_data['imageID'].astype(int)
-
+    frame_data['imageid'] = frame_data['imageid'].astype(int)
     frame_data = frame_data[new_order]
+    print("frame_data after\n",frame_data)
     frame_data = frame_data.rename(columns=rename)
-    
     return frame_data
 
 # def process_video_frames(video_path, db, batchfolder=None):
@@ -192,7 +213,7 @@ def get_town(frame_data, lat, lon, output_dir, db):
 #     frame_info = get_town(frame_info, None, None, output_dir=new_path, db=db)
 #     frame_info = frame_info.drop(frame_info.index[-1])
 
-#     db.image.insert_many(frame_info.to_dict(orient="records"))
+#     db.images.insert_many(frame_info.to_dict(orient="records"))
 
 #     columns_to_drop = ["imagePath", "latitude", "longitude", "town", "road", "roadType", "datetime"]
 #     frame_info = frame_info.drop(columns=columns_to_drop)
@@ -271,9 +292,9 @@ def get_town(frame_data, lat, lon, output_dir, db):
 #         return False
 #     batch_id = int(batch_doc['batchID'])
 
-#     # Determine next imageID
-#     img_doc = db.image.find_one(sort=[('imageID', -1)])
-#     next_img_id = int(img_doc['imageID']) + 1 if img_doc and 'imageID' in img_doc else 1
+#     # Determine next imageid
+#     img_doc = db.images.find_one(sort=[('imageid', -1)])
+#     next_img_id = int(img_doc['imageid']) + 1 if img_doc and 'imageid' in img_doc else 1
 
 #     # Placeholder geodata (center of Singapore)
 #     DEFAULT_LAT = 1.3521
@@ -288,7 +309,7 @@ def get_town(frame_data, lat, lon, output_dir, db):
 #         # absolute path for imagePath
 #         abs_path = os.path.join(abs_output, fname)
 #         record = {
-#             'imageID': next_img_id,
+#             'imageid': next_img_id,
 #             'imagePath': abs_path,
 #             'latitude': DEFAULT_LAT,
 #             'longitude': DEFAULT_LON,
@@ -298,13 +319,13 @@ def get_town(frame_data, lat, lon, output_dir, db):
 #             'datetime': os.path.splitext(fname)[0]
 #         }
 #         image_records.append(record)
-#         batch_records.append({'batchID': batch_id, 'imageID': next_img_id})
+#         batch_records.append({'batchID': batch_id, 'imageid': next_img_id})
 #         next_img_id += 1
 
 #     # Insert image docs
 #     try:
-#         db.image.insert_many(image_records)
-#         print(f"Inserted {len(image_records)} image records into db.image")
+#         db.images.insert_many(image_records)
+#         print(f"Inserted {len(image_records)} image records into db.images")
 #     except Exception as e:
 #         print("Error inserting image records:", e)
 #         return False
@@ -318,6 +339,308 @@ def get_town(frame_data, lat, lon, output_dir, db):
 #         return False
 
 #     return "Success"
+
+import traceback
+EXIFTOOL_BINARY = r"C:\Users\ljy12\Downloads\traffic\apps\home\Tools\exiftool.exe"
+
+# EXIFTOOL_BINARY = os.path.join("tools", "exiftool.exe")
+
+
+def extract_gps_and_timestamp(video_path, exiftool_path=EXIFTOOL_BINARY):
+    """
+    Extracts GPS (latitude and longitude) and timestamp from a video file using ExifTool.
+    Returns (latitude, longitude, timestamp) or (None, None, None) if extraction fails.
+    """
+    def run_command(*args):
+        try:
+            process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            stdout, _ = process.communicate()
+            return stdout.decode('utf-8')
+        except Exception as e:
+            print(f"Command execution failed: {e}")
+            print(traceback.format_exc())
+            return ''
+
+    def parse_dms(dms_str):
+        dms_str = dms_str.replace("deg", "").replace("'", "").replace('"', "").strip()
+        direction = dms_str[-1] if dms_str[-1] in 'NSEW' else None
+        if direction:
+            dms_str = dms_str[:-1].strip()
+        try:
+            degrees, minutes, seconds = map(float, dms_str.split())
+            decimal = degrees + minutes / 60 + seconds / 3600
+            if direction in ('S', 'W'):
+                decimal = -decimal
+            return decimal
+        except ValueError:
+            print(f"Invalid DMS: {dms_str}")
+            return None
+    print('attempting to get lat')
+    # Run exiftool
+    raw_json = run_command(
+        exiftool_path, '-j', '-ee', '-G3', '-s',
+        '-api', 'largefilesupport=1', video_path
+    )
+    if not raw_json:
+        return None, None, None
+
+    try:
+        metadata = json.loads(raw_json)
+    except json.JSONDecodeError:
+        print("Failed to decode ExifTool output as JSON.")
+        return None, None, None
+
+    if not metadata:
+        return None, None, None
+    # print('metadata',metadata)
+    frames_data = []
+
+    for key, value in metadata[0].items():
+        if "GPSLatitude" in key and "Doc" in key:
+            # Derive the frame number (e.g., Doc1 -> 1)
+            prefix = key.split(":")[0]
+            lat_str = value
+            lon_str = metadata[0].get(f"{prefix}:GPSLongitude", "")
+            timestamp_str = metadata[0].get(f"{prefix}:GPSDateTime", "")
+
+            # Parse DMS to decimal
+            lat = parse_dms(lat_str)
+            lon = parse_dms(lon_str)
+
+            # Parse timestamp
+            if isinstance(timestamp_str, str):
+                timestamp_str = timestamp_str.rstrip("Z")
+                try:
+                    timestamp = datetime.datetime.strptime(timestamp_str, "%Y:%m:%d %H:%M:%S.%f")
+                except ValueError:
+                    print(f"Unrecognized timestamp format: {timestamp_str}")
+                    timestamp = None
+            else:
+                timestamp = None
+
+            if lat and lon and timestamp:
+                frames_data.append({
+                    "latitude": lat,
+                    "longitude": lon,
+                    "timestamp": timestamp
+                })
+    # print('framesdata',frames_data)
+    # Return list of frame GPS+time
+    return frames_data if frames_data else None
+    # meta = metadata[0]
+    
+    # lat = parse_dms(meta.get("Doc1:GPSLatitude", "")) if "Doc1:GPSLatitude" in meta else None
+    # lon = parse_dms(meta.get("Doc1:GPSLongitude", "")) if "Doc1:GPSLongitude" in meta else None
+
+    # # Get timestamp
+    # timestamp = meta.get("QuickTime:CreateDate") or meta.get("EXIF:DateTimeOriginal") \
+    #     or meta.get("TrackCreateDate") or meta.get("MediaCreateDate")
+
+    # if isinstance(timestamp, str):
+    #     timestamp = timestamp.rstrip("Z")  # Remove trailing Z
+    #     try:
+    #         timestamp = datetime.datetime.strptime(timestamp, "%Y:%m:%d %H:%M:%S")
+    #     except ValueError:
+    #         print(f"Unrecognized timestamp format: {timestamp}")
+    #         timestamp = None
+
+    # print(f"Latitude: {lat}, Longitude: {lon}, Timestamp: {timestamp}")
+    # return lat, lon, timestamp
+def process_video_with_cv2(video_path, db, batchfolder=None, bid=None, tog=None, inspectionDate=None):
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    video_capture = cv2.VideoCapture(video_path)
+    if not video_capture.isOpened():
+        print("Error opening video file.")
+        return False
+
+    # Prepare URLs from toggles
+    predict_url = [
+        "http://localhost:5001/predictRaveling",
+        "http://localhost:5002/predict17Defects",
+        "http://localhost:5003/predictKerb",
+        "http://localhost:5004/predictPaint",
+        "http://localhost:5009/api/predict"
+    ]
+    # urls = [predict_url[i] if toggled else '' for i, toggled in enumerate(tog)]
+    urls=[]
+    for i in range(len(tog)):
+        print(tog[i])
+        if tog[i]:
+            urls.append(predict_url[i])
+    print(urls)
+    # Batch ID assignment
+    if bid is None:
+        latest_video = db.videos.find().sort('videoid', -1).limit(1)
+        latest_video_list = list(latest_video)
+        bid = latest_video_list[0]['videoid'] + 1 if latest_video_list else 1
+    else:
+        db.videos.update_one({"videoid": bid}, {"$set": {"processingstatus": "Inferencing"}})
+
+    # Output directory setup
+    out_dir = os.path.abspath(os.path.join("Batches", batchfolder or "", video_name))
+    if os.path.exists(out_dir):
+        shutil.rmtree(out_dir)
+    os.makedirs(out_dir, exist_ok=True)
+    frame_gps_data = extract_gps_and_timestamp(video_path)
+    # print('framegpsdata',frame_gps_data)
+    if frame_gps_data:
+        for frame_meta in frame_gps_data:
+            lat = frame_meta["latitude"]
+            lon = frame_meta["longitude"]
+            timestamp = frame_meta["timestamp"]
+            print(lat, lon, timestamp)
+    else:
+        print("No GPS metadata found.")
+    fps = video_capture.get(cv2.CAP_PROP_FPS)
+    total_duration = video_capture.get(cv2.CAP_PROP_FRAME_COUNT) / fps
+    current_second = 0
+    frame_idx = 0
+
+    while current_second < total_duration:
+        # Set position to current second (in milliseconds)
+        video_capture.set(cv2.CAP_PROP_POS_MSEC, current_second * 1000)
+        
+        ret, frame = video_capture.read()
+        if not ret:
+            break
+
+        frame_path = os.path.join(out_dir, f"frame_{frame_idx}.jpg")
+        cv2.imwrite(frame_path, frame)
+
+        # All your existing frame processing code goes here...
+
+
+
+                # Extract GPS metadata for the current frame
+        lat=frame_gps_data[current_second]["latitude"]
+        lon=frame_gps_data[current_second]["longitude"]
+        # print("lat",lat,'\nlon',lon)
+        finder = Finder("Roads.csv")        
+        lat, lon, road, roadType = finder.find_closest_road(lat, lon)
+        print('between road type and postal')
+        road,postal=reverse_geocode(lat,lon)
+        print('after postal')
+        # Build metadata DataFrame
+        last_image = db.images.find_one(sort=[("imageid", -1)])
+        new_image_id = (last_image["imageid"] + 1) if last_image else 1
+        print('new img id',new_image_id)
+        frame_info = {
+            "file_name": frame_path,
+            'videoid':bid,
+            "latitude": lat,
+            "longitude": lon,
+            "roadname":road,
+            "roadtype":roadType,
+            "postalcode":postal,
+                        'imageid': new_image_id,
+            'defects':[],
+            'outputid':[],
+            'bbox':[],
+            'confidence':[]
+        }
+        print("frame_info",frame_info)
+        # Enrich with geolocation info
+        # frame_info = get_town(frame_info, None, None, output_dir=out_dir, framepath=None, db=db)
+        # location_data = frame_info.iloc[0].to_dict()
+        count=0
+
+        for j, url in enumerate(urls):
+            if url == '':
+                continue
+
+            print(f"Sending frame {frame_idx} to {url}")
+            result = send_prediction_request(frame_path, url)
+            if result is None or any(r is None for r in result):
+                print("Invalid prediction result. Skipping...")
+                continue
+            output_lbl, xyxy, confidence, class_id = result
+            print('results',result)
+            print('output_label',output_lbl)
+            if output_lbl==False:
+                continue
+            if len(output_lbl) == 0: 
+                continue
+            print('test1')
+            
+            # Save full frame if all required values are valid
+            if output_lbl and xyxy and confidence and class_id:
+                print('results if met')
+                frame_output_path = os.path.join(out_dir, f"frame_{frame_idx}_defect.jpg")
+                
+                frame_info['imagepath']=frame_output_path
+                cv2.imwrite(frame_output_path, frame)
+                
+                print('test2')
+
+                # --- Insert into MongoDB images collection ---
+                
+                print('test3')
+                
+                if count==0:
+                    print('test4')
+                    
+                    db.images.insert_one({
+                        "imageid": new_image_id,
+                        "defectedimgpath": frame_output_path
+                    })
+                    print('test5')
+                    count=1
+                    
+            
+            print('test6')
+            if count == 1 :
+                severity_array = []
+                croppedImage_path_array = []
+                                # Add geolocation metadata
+                frame_info["bbox"].extend(xyxy)  # ✔ Flattens bbox entries
+                frame_info["confidence"].extend(confidence)
+                frame_info["defects"].extend(output_lbl)
+                frame_info["outputid"].extend(class_id)
+
+                now = datetime.datetime.now()
+                formatted = now.strftime("%d %b %Y, %H:%M:%S")
+                frame_info['detecteddatetime']=formatted
+                if url != "http://localhost:5003/predictKerb":
+                    for k in range(len(confidence)):
+                        xyxy_current = xyxy[k]
+                        cropped_path = crop_image(frame_path, xyxy_current, k)
+                        severity = send_prediction_request(cropped_path, "http://localhost:5005/predictSeverity")
+
+                        severity_array.append(severity)
+                        croppedImage_path_array.append(cropped_path)
+                    print('going into detection')
+                    detection_import(frame_info, frame_output_path, xyxy, confidence, output_lbl, class_id, db, j + 1, severity_array, croppedImage_path_array)
+                    print('out of detection')
+                else:
+                    print('going into detection')
+                    detection_import(frame_info, frame_output_path, xyxy, confidence, output_lbl, class_id, db, j + 1)
+                    print('out of detection')
+
+
+        # dummy_image_id = frame_idx  # Replace with actual logic if needed and not (len(output_lbl) == 0 or output_lbl==False)
+        print('finding in defects')
+        if count==1:
+            
+            if db.defects.find_one({"imageid": new_image_id}):
+                print("gna apply img")
+                apply_to_image(db, frame_info,inspectionDate=inspectionDate, image_id=new_image_id, toggle_confidence=False)
+
+        # db.batch.update_one({"batchID": bid}, {"$inc": {"framesProcessed": 1}}, upsert=True)
+        frame_idx += 1
+        current_second += 1  # Advance by 1 second
+        result=db.videos.update_one(
+    {"videoid": bid},  # If _id is ObjectId, wrap with ObjectId(image_id)
+    {"$set": {"framesprocessed": frame_idx}}
+    )
+    video_capture.release()
+    result = db.videos.update_one(
+    {"videoid": bid},  # If _id is ObjectId, wrap with ObjectId(image_id)
+    {"$set": {"processingstatus": "Completed"}}
+    )
+
+    print("Finished frame-by-frame processing.")
+    return True
+
 
 def process_video_frames(video_path: str, db, batchfolder: str = None):
     """
@@ -346,44 +669,127 @@ def process_video_frames(video_path: str, db, batchfolder: str = None):
         "lat": [meta['latitude']] * len(frames),
         "lon": [meta['longitude']] * len(frames)
     })
-
+    print('\nframe_info1\n',frame_info)
     # 4. Add geolocation details using get_town
-    frame_info = get_town(frame_info, None, None, output_dir=out_dir, db=db)
+    frame_info = get_town(frame_info, None, None, output_dir=out_dir,framepath=None, db=db)
     if len(frame_info) > 1:
         frame_info = frame_info.drop(frame_info.index[-1])  # drop last row like before
 
-    # 5. Insert into db.image
-    db.image.insert_many(frame_info.to_dict(orient="records"))
+    # 5. Insert into db.images
+    # db.images.insert_many(frame_info.to_dict(orient="records"))
 
     # 6. Prepare for db.batchImage insertion
     frame_info = frame_info.drop(columns=["imagePath", "latitude", "longitude", "town", "road", "roadType", "datetime"])
-    max_batch = db.batch.find_one(sort=[('batchID', -1)])
+    print('\nframe_info2\n',frame_info)
+    max_batch = db.videos.find_one(sort=[('videoid', -1)])
     if not max_batch:
         print("No batch found in DB.")
         return False
 
-    frame_info["batchID"] = int(max_batch["batchID"])
-    db.batchImage.insert_many(frame_info.to_dict(orient="records"))
+    frame_info["videoid"] = int(max_batch["videoid"])
+    # db.batchImage.insert_many(frame_info.to_dict(orient="records"))
 
     print(f"Inserted {len(frames)} frames with location info into MongoDB.")
     return "Success"
 
 
-def process_images(path, lat, lon, db):
+def process_images(path, lat, lon, db,tog,bid,inspectionDate, toggle_confidence=False):
+    print("processing img")
     if lat or lon is None:
         lat = 1.3521
         lon = 103.8198
+    out_dir = os.path.abspath(os.path.join("Batches", "Individual_Images"))
 
-    frame_info = get_town(None, lat, lon, db=db)
+    frame_info = get_town(None, lat, lon,out_dir,path, db=db)
+    print('got town')
+    print('\nframe info',frame_info.columns)
+    # columns_to_drop = ["imagePath", "latitude", "longitude", "town", "road", "roadType", "datetime"]
+    # frame_info = frame_info.drop(columns=columns_to_drop)
 
-    columns_to_drop = ["imagePath", "latitude", "longitude", "town", "road", "roadType", "datetime"]
-    frame_info = frame_info.drop(columns=columns_to_drop)
+    max_batch_id = list(db.videos.find().sort('videoid', -1).limit(1))[0]['videoid']
+    frame_info['videoid'] = max_batch_id
+    frame_info['videoid'] = frame_info['videoid'].astype(int)
+    predict_url = [
+    "http://localhost:5001/predictRaveling",
+    "http://localhost:5002/predict17Defects",
+    "http://localhost:5003/predictKerb",
+    "http://localhost:5004/predictPaint",
+    "http://localhost:5009/api/predict"
+    ]
+    urls=[]
+    for i in range(len(tog)):
+        if tog[i]==True:
+            urls.append(predict_url[i]) 
+        else:
+            urls.append('')
+    print("urls",urls)
+    if bid==None:
+        # latest_batch = db.batch.find().sort('batchID', -1).limit(1)
+        # print("latest_batch",latest_batch)
+        # latest_batch_list = list(latest_batch)
+        # bid = latest_batch_list[0]['batchID'] + 1 if latest_batch_list else 1
+        latest_video = db.videos.find().sort('videoid', -1).limit(1)
+        print("latest_batch",latest_video)
+        latest_video_list = list(latest_video)
+        bid = latest_video_list[0]['videoid'] + 1 if latest_video_list else 1
+    else:
+        db.videos.update_one({"videoid": bid}, {"$set": {"processingstatus": "Inferencing"}})
+    latest_image=0
+    for j in range(len(urls)):
+            if urls[j]=='':
+                continue
+            print("\n","Printing urls","\n",urls,tog,path)
+            output_lbl, xyxy, confidence, class_id = send_prediction_request(path, urls[j])
+            if output_lbl==False:
+                continue
+            if len(output_lbl) == 0: 
+                continue
+            if output_lbl and xyxy and confidence and class_id:
+                if latest_image==0:
 
-    max_batch_id = list(db.batch.find().sort('batchID', -1).limit(1))[0]['batchID']
-    frame_info['batchID'] = max_batch_id
-    frame_info['batchID'] = frame_info['batchID'].astype(int)
+                    latest_image = db.images.find().sort("imageid", -1).limit(1)
+                    latest_image_list = list(latest_image)
 
-    db.batchImage.insert_one(frame_info.to_dict(orient="records"))
+                    if latest_image_list and "imageid" in latest_image_list[0]:
+                        latest_image_id = latest_image_list[0]["imageid"]+1
+                    else:
+                        latest_image_id = 1
+                
+                image_df=pd.DataFrame([{'imagePath': path, 'imageid': latest_image_id}])
+                
+                print("imgdf",image_df)
+                if urls[j]!="http://localhost:5003/predictKerb" and urls[j]!="": # Do not run severity engine on kerb defects
+                    severity_predict_url = "http://localhost:5005/predictSeverity"
+                    severity_array = [] # Array to store severity labels
+                    croppedImage_path_array = [] # Array to store croppedImage_path_array
+                    # Loop through multiple detected defects individually in a path
+                    if len(confidence) > 1: # More than one detected defect in a path
+                        for k in range(len(confidence)):
+                            xyxy_current = xyxy[k]
+                            croppedImage_path = crop_image(path, xyxy_current, k) # Crop image
+                            severity = send_prediction_request(croppedImage_path, severity_predict_url) # Run severity engine
+                            severity_array.append(severity)
+                            croppedImage_path_array.append(croppedImage_path)
+                    else: # Singular defect detected in a path
+                        xyxy_current = xyxy[0]
+                        croppedImage_path = crop_image(path, xyxy_current) # Crop image
+                        severity = send_prediction_request(croppedImage_path, severity_predict_url) # Run severity engine
+                        severity_array.append(severity)
+                        croppedImage_path_array.append(croppedImage_path)
+                    print('detection import', i)
+                    detection_import(image_df, path, xyxy, confidence, output_lbl, class_id, db, j+1, severity_array, croppedImage_path_array)
+                    print('out detection import')
+                else:
+                    print('detection import',i)
+                    detection_import(image_df, path, xyxy, confidence, output_lbl, class_id, db, j+1)
+                    print('out detection import')
+    if db.defects.find_one({"imageid": int(image_df["imageid"][i])}): 
+            print(int(image_df["imageid"][i]))
+
+            apply_to_image(db, inspectionDate=inspectionDate, image_id=int(image_df["imageid"][0]), toggle_confidence=toggle_confidence)
+        
+    # db.batchImage.insert_one(frame_info.to_dict(orient="records"))
+    print('before return')
     return "Success"
     #make a copy of the image and move to directory
 
@@ -392,19 +798,27 @@ def is_image_or_video(filename):
     _, ext = os.path.splitext(filename)
     return ext.lower() in image_video_extensions
 
-def split_process(path, lat, lon, db, bid=None):
+def split_process(path, lat, lon,inspectionDate,tog, db, bid=None):
     if bid is not None:
-        db.batch.update_one({"batchID": bid}, {"$set": {"status": "Splitting"}})
-    
+        db.videos.update_one({"videoid": bid}, {"$set": {"processingstatus": "Splitting"}})
+    print("splitting")
     # Single Video
     if path.endswith(".mp4"):
-        process_video_frames(path, db)
+        #batchimg and img
+        # process_video_frames(path, db)
+        # make_inferences(db,tog,bid=bid, inspectionDate=inspectionDate, toggle_confidence=False)
+        process_video_with_cv2(path, db=db, bid=bid, tog=tog, inspectionDate=inspectionDate)
 
     # Single Image
+    ### has been scrapped for now as images have no geodata and geodata is needed for postal latitude and longitude. require a lot of changes!!!
     elif path.endswith((".jpg", ".jpeg", ".png")):
-        os.makedirs(os.path.join("Batches", "Individual_Images"), exist_ok=True)
-        process_images(path, lat, lon, db)
-        shutil.copy(path, os.path.join("Batches", "Individual Images"))
+        # os.makedirs(os.path.join("Batches", "Individual_Images"), exist_ok=True)
+        # #batch img and image
+        # process_images(path, lat, lon, db,tog,bid,inspectionDate, toggle_confidence=False)
+        # print('out process img')
+        # shutil.copy(path, os.path.join("Batches", "Individual Images"))
+        # print('test')
+        return "unfinished image processing"
 
     # Folder
     else:
@@ -429,6 +843,9 @@ def split_process(path, lat, lon, db, bid=None):
                     continue
             elif filename.endswith((".jpg", ".jpeg", ".png")):
                 continue
+
+        make_inferences(db,tog,bid=bid, inspectionDate=inspectionDate, toggle_confidence=False)
+    print("Succesfully made inferences")
                 
 # Image Processing Functions
 def get_list_of_images(db):
@@ -466,34 +883,59 @@ def get_list_of_images(db):
         return f'Error: DBMS Exception: {e}', 500
 
 # Inference Functions
+# def send_prediction_request(image_path, predict_url):
+#     try:
+#         input_data = {"image_path": image_path} 
+#         response = requests.post(predict_url, json=input_data)
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         print("Something wrong with the post request")
+#         return None
+
+#     if response.status_code == 200:
+#         response_data = response.json()
+#         # print(response_data)
+
+#         if predict_url == "http://localhost:5005/predictSeverity":
+#             severityLevel = response_data["severity"]
+#             return severityLevel # returns e.g. 1
+#         else:
+#             # result = response_data["result"]
+#             class_id = response_data["class_id"]
+#             output_lbl = response_data["output_lbl"]
+#             xyxy = response_data["xyxy"]
+#             confidence = response_data["confidence"]
+
+#         return output_lbl, xyxy, confidence, class_id  
+#     else:
+#         print(f"Prediction Error with {image_path} and {predict_url} ")
+#         # print("Error:", response.status_code, response.text)
+#         return False, False, False, False
 def send_prediction_request(image_path, predict_url):
     try:
-        input_data = {"image_path": image_path} 
+        input_data = {"image_path": image_path}
         response = requests.post(predict_url, json=input_data)
     except Exception as e:
         print(f"Error: {e}")
         print("Something wrong with the post request")
-        return None
+        return None, None, None, None
 
     if response.status_code == 200:
         response_data = response.json()
-        # print(response_data)
 
         if predict_url == "http://localhost:5005/predictSeverity":
-            severityLevel = response_data["severity"]
-            return severityLevel # returns e.g. 1
-        else:
-            # result = response_data["result"]
-            class_id = response_data["class_id"]
-            output_lbl = response_data["output_lbl"]
-            xyxy = response_data["xyxy"]
-            confidence = response_data["confidence"]
+            return response_data.get("severity")  # This is fine as a single value
 
-        return output_lbl, xyxy, confidence, class_id  
+        return (
+            response_data.get("output_lbl"),
+            response_data.get("xyxy"),
+            response_data.get("confidence"),
+            response_data.get("class_id"),
+        )
     else:
-        print(f"Prediction Error with {image_path} and {predict_url} ")
-        # print("Error:", response.status_code, response.text)
-        return False, False, False, False
+        print(f"Prediction Error with {image_path} and {predict_url}")
+        return None, None, None, None
+
 
 def crop_image(image_path, bbox, identifier = None):
     image = cv2.imread(image_path)
@@ -573,13 +1015,18 @@ def make_inferences(db,tog,bid=None, toggle_confidence=False, inspectionDate=Non
     except Exception as e:
         return f'Error: DBMS Exception: {e}', 500      
     image_df = pd.DataFrame(images)
+    #new batch
     if bid==None:
-        latest_batch = db.batch.find().sort('batchID', -1).limit(1)
-        print("latest_batch",latest_batch)
-        latest_batch_list = list(latest_batch)
-        bid = latest_batch_list[0]['batchID'] + 1 if latest_batch_list else 1
+        # latest_batch = db.batch.find().sort('batchID', -1).limit(1)
+        # print("latest_batch",latest_batch)
+        # latest_batch_list = list(latest_batch)
+        # bid = latest_batch_list[0]['batchID'] + 1 if latest_batch_list else 1
+        latest_video = db.videos.find().sort('videoid', -1).limit(1)
+        print("latest_batch",latest_video)
+        latest_video_list = list(latest_video)
+        bid = latest_video_list[0]['videoid'] + 1 if latest_video_list else 1
     else:
-        db.batch.update_one({"batchID": bid}, {"$set": {"status": "Inferencing"}})
+        db.videos.update_one({"videoid": bid}, {"$set": {"processingstatus": "Inferencing"}})
     print(image_df['imageID'])
     print(urls)
     for i in range(len(image_df['imagePath'])):
@@ -620,7 +1067,7 @@ def make_inferences(db,tog,bid=None, toggle_confidence=False, inspectionDate=Non
             else:
                 detection_import(image_df, frame, xyxy, confidence, output_lbl, class_id, db, j+1)
 
-        if db.defect.find_one({"imageID": int(image_df["imageID"][i])}): 
+        if db.defect.find_one({"imageID": int(image_df["imageID"][0])}): 
             print(int(image_df["imageID"][i]))
 
             apply_to_image(db, inspectionDate=inspectionDate, image_id=int(image_df["imageID"][i]), toggle_confidence=toggle_confidence)
@@ -631,13 +1078,20 @@ def make_inferences(db,tog,bid=None, toggle_confidence=False, inspectionDate=Non
 
 # Importing Defects into DB
 def detection_import(image_df, frame, xyxy, confidence, output_lbl, output_id, db, engine_number, severityLevel = None, croppedImgPath_array = None):
-    image_id = image_df[image_df['imagePath']==frame]['imageID'].values[0]  
+    print('in detection import')
+    print('frame',frame)
+    print('imagedf')
+    print(image_df)
+    image_id=image_df['imageid']
+    print('passed if')
     xyxy = eval(f"{xyxy}")
-
+    print('test1 and conficence',confidence)
     if len(confidence)>1:
-        for i in range(len(confidence)):            
-            current_max = list(db.defect.find().sort('defectID', -1).limit(1))
-            current_max = current_max[0]['defectID'] if current_max else None
+        for i in range(len(confidence)): 
+            #defectid           
+            print('test',i)
+            current_max = list(db.defects.find().sort('defectid', -1).limit(1))
+            current_max = current_max[0]['defectid'] if current_max else None
             defect_id = current_max + 1 if current_max else 1
             current_confidence = confidence[i]
             current_output_lbl = output_lbl[i]
@@ -675,64 +1129,81 @@ def detection_import(image_df, frame, xyxy, confidence, output_lbl, output_id, d
                 # Rename old cropped image file path to include defectID
                 rename_croppedImagePath(croppedImgPath, defect_id, i) # [Team Teal][Code]
                 output_output_id = 20
-
-            db.defect.insert_one({
-                "defectID" : defect_id,
-                "imageID": int(image_id),
-                "outputLabel": current_output_lbl, 
-                "outputID": output_output_id,
-                "confidence": current_confidence,
-                "bbox": str(xyxy_current),
-                "severity": severity
+            #inserting into defect
+            db.defects.insert_one({
+                "defectid" : defect_id,
+                "videoid":image_df['videoid'],
+                "imageid": int(image_id),
+                "defecttypeid": output_output_id,
+                'latitude':image_df['latitude'],
+                'longitude':image_df['longitude'],
+                'roadname':image_df['roadname'],
+                'roadtype':image_df['roadtype'],
+                'postalcode':image_df['postalcode'],
+                "severity": severity,
+                'detecteddatetime':image_df['detecteddatetime']
                 })
     else: 
-        current_max = list(db.defect.find().sort('defectID', -1).limit(1))
-        current_max = current_max[0]['defectID'] if current_max else None
+        print('in else')
+        current_max = list(db.defects.find().sort('defectid', -1).limit(1))
+        current_max = current_max[0]['defectid'] if current_max else None
         defect_id = current_max + 1 if current_max else 1
         xyxy_single = xyxy[0]
         xyxy_single = str(xyxy_single)
         output_lbl = output_lbl[0]
         confidence = confidence[0]
-
+        print('test1')
+        
         if croppedImgPath_array is not None:
             croppedImgPath = croppedImgPath_array[0]
+            print('test2')
 
         if engine_number == 1:
             severity = severityLevel[0] # [Team HotPink][Code]
             # Rename old cropped image file path to include defectID
             rename_croppedImagePath(croppedImgPath, defect_id) # [Team HotPink][Code]
             output_output_id = 17
+            print('test3')
 
         elif engine_number == 2:
             severity = severityLevel[0] # [Team HotPink][Code]
             # Rename old cropped image file path to include defectID
             rename_croppedImagePath(croppedImgPath, defect_id) # [Team HotPink][Code]
             output_output_id = output_id[0] + 1
+            print('test4')
         
         elif engine_number == 3:
             severity = int(str(output_lbl).strip('Faded Kerb')[1])
             output_lbl = output_lbl.split(" ")[0] + " " + output_lbl.split(" ")[1] + " " + output_lbl.split(" ")[3]
             output_output_id = 18
+            print('test5')
         
         elif engine_number == 4:
             severity = severityLevel[0]
             output_output_id = 19
+            print('test6')
         
         elif engine_number == 5:
             severity = severityLevel[0]
                 # Rename old cropped image file path to include defectID
                 # rename_croppedImagePath(croppedImgPath, defect_id, i) # [Team Teal][Code]
             output_output_id = 20
-        
-        db.defect.insert_one({
-            "defectID" : defect_id,
-            "imageID": int(image_id),
-            "outputLabel": str(output_lbl),
-            "outputID": output_output_id,
-            "confidence": confidence,
-            "bbox": str(xyxy_single),
-            "severity": severity
-        })
+            print('test7')
+        #insert in defect
+        db.defects.insert_one({
+                "defectid" : defect_id,
+                "videoid":image_df['videoid'],
+                "imageid": int(image_id),
+                "defecttypeid": output_output_id,
+                'latitude':image_df['latitude'],
+                'longitude':image_df['longitude'],
+                'roadname':image_df['roadname'],
+                'roadtype':image_df['roadtype'],
+                'postalcode':image_df['postalcode'],
+                "severity": severity,
+                'detecteddatetime':image_df['detecteddatetime']
+                })
+        print('test8')
 
 def get_class_id(defect):
     preprocessed_label = defect.strip().lower()
@@ -758,7 +1229,7 @@ def get_class_id(defect):
     return class_id
 
 # Applying Defects to singular Images
-def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_confidence=False, reannotating=False):
+def apply_to_image(db, defected_image,inspectionDate=None, bid=None, image_id=None, toggle_confidence=False, reannotating=False):
 
     color_map = {
         'Alligator Crack': (255, 69, 0),          # Red-Orange
@@ -782,62 +1253,67 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
         'Paint Spillage': (123, 104, 238),        # Medium Slate Blue
         'Drainage': (255, 255, 0)
     }
+    print('in applying')
+    # pipeline = [
+    #     {
+    #         "$lookup": {
+    #             "from": "defect",
+    #             "localField": "imageID",
+    #             "foreignField": "imageID",
+    #             "as": "defects"
+    #         } 
+    #     },
+    #     {
+    #         "$unwind": {
+    #             "path": "$defects",
+    #             "preserveNullAndEmptyArrays": False
+    #         }
+    #     },
+    #     {
+    #         "$match": {
+    #             "imageID": image_id
+    #         }
+    #     },
+    #     {
+    #         "$sort": {
+    #             "defects.defectID": 1
+    #         }
+    #     },
+    #     {
+    #         "$group": {
+    #             "_id": "$imageID",
+    #             "imagePath": {"$first": "$imagePath"},
+    #             "defects": {"$push": "$defects.outputLabel"},
+    #             "bbox": {"$push": "$defects.bbox"},
+    #             "confidence": {"$push": "$defects.confidence"},
+    #             "outputID": {"$push": "$defects.outputID"}
+    #         }
+    #     },
+    #     {
+    #         "$project": {
+    #             "_id": 0,
+    #             "imagePath": 1,
+    #             "imageID": "$_id",
+    #             "defects": 1,
+    #             "outputID": 1,
+    #             "bbox": 1,
+    #             "confidence": 1
+    #         }
+    #     }
+    # ]
 
-    pipeline = [
-        {
-            "$lookup": {
-                "from": "defect",
-                "localField": "imageID",
-                "foreignField": "imageID",
-                "as": "defects"
-            } 
-        },
-        {
-            "$unwind": {
-                "path": "$defects",
-                "preserveNullAndEmptyArrays": False
-            }
-        },
-        {
-            "$match": {
-                "imageID": image_id
-            }
-        },
-        {
-            "$sort": {
-                "defects.defectID": 1
-            }
-        },
-        {
-            "$group": {
-                "_id": "$imageID",
-                "imagePath": {"$first": "$imagePath"},
-                "defects": {"$push": "$defects.outputLabel"},
-                "bbox": {"$push": "$defects.bbox"},
-                "confidence": {"$push": "$defects.confidence"},
-                "outputID": {"$push": "$defects.outputID"}
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "imagePath": 1,
-                "imageID": "$_id",
-                "defects": 1,
-                "outputID": 1,
-                "bbox": 1,
-                "confidence": 1
-            }
-        }
-    ]
-
-    defected_image = list(db.image.aggregate(pipeline))
-
+    # defected_image = list(db.images.aggregate(pipeline))
+    print('somewhere here?')
     # class_id = np.array([defect_id for defect_id in defected_image[0]['defects']])
-    bbox = np.array([eval(x) for x in defected_image[0]['bbox']])
-    confidence = np.array(defected_image[0]['confidence'])
-    output_lbl = list(defected_image[0]['defects'])
-    
+    # bbox = np.array([eval(x) for x in defected_image[0]['bbox']])
+    # bbox = np.array(defected_image['bbox'])
+    bbox = np.array(defected_image['bbox']).reshape(-1, 4)
+
+    print('maybe here?')
+    confidence = np.array(defected_image['confidence'])
+    output_lbl = list(defected_image['defects'])
+
+    print('maybe not?')
     copy_output_lbl = np.copy(output_lbl)
     for j in range(len(copy_output_lbl)):
         if "Faded Kerb" in copy_output_lbl[j]:
@@ -860,7 +1336,7 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
     output_lbl = np.array(output_lbl)
 
     detections = sv.Detections(xyxy= bbox, confidence=confidence, class_id=class_id)
-    image_path = defected_image[0]['imagePath']
+    image_path = defected_image['imagepath']
     
     box_annotator = sv.BoxAnnotator(color = sv.Color.RED, thickness=10, text_scale=3, text_color=sv.Color.WHITE, text_thickness=10)
     annotated_frame = box_annotator.annotate(
@@ -870,6 +1346,12 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
     )
 
     defect_img = image_path.replace(".jpg", "_defect.jpg")
+    print("defectimg",defect_img)
+    result = db.images.update_one(
+    {"imageid": image_id},  # If _id is ObjectId, wrap with ObjectId(image_id)
+    {"$set": {"defectedimgpath": defect_img}}
+)
+
     imageio.imwrite(defect_img, annotated_frame)
     
     # Annotation Using Legends
@@ -984,7 +1466,7 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
             for key, value in defect_classes.items():
                 if value["text"] == defect_type:
                     defectNumber=key
-
+            #creates a report
             max_report = db.report.find_one(sort=[("reportID", -1)])
             next_reportID = max_report["reportID"] + 1 if max_report else 1
             if not os.path.exists(os.path.abspath("Reports")):
@@ -999,10 +1481,11 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
             print("report path",reportPath)
 
             # if (not db.report.find_one({"imageID": image_id}) and reannotating) or not reannotating:
-            db.report.insert_one(
+            db.reports.insert_one(
                 {
                     "reportID": int(next_reportID),
-                    "imageID": int(defected_image[0]["imageID"]),
+                    "imageid": int(defected_image['imageid']
+),
                     "inspectedBy": ConfigData.INSPECTOR_NAME, 
                     "inspectionDate": inspectionDate,
                     "inspectionType": ConfigData.INSPECTION_TYPE,
@@ -1028,34 +1511,37 @@ def apply_to_image(db, inspectionDate=None, bid=None, image_id=None, toggle_conf
 
 
     ## Generate Report PDF 
-    print(int(defected_image[0]["imageID"]))
-    data = get_reports(image_id=int(defected_image[0]["imageID"]))
-    r_bbox = get_bbox(int(defected_image[0]["imageID"]))
+    print(int(defected_image['imageid']
+))
+#     data = get_reports(image_id=int(defected_image['imageid']
+# ))
+#     r_bbox = get_bbox(int(defected_image['imageid']
+# ))
 
-    report_data = {
-        "name": data[0]["Name"],
-        "ins_type": data[0]["Inspection Type"],
-        "ins_date": data[0]["Inspection Date"],
-        "road_type": data[0]["RoadType"],
-        "type": data[0]["Type"],
-        "latitude": data[0]["Latitude"],
-        "longitude": data[0]["Longitude"],
-        "inspector": data[0]["Inspector"],
-        "severity": data[0]["Severity"],
-        "image": data[0]["Image"],
-        "report_id": data[0]["ReportID"],
-        "road": data[0]["Road"],
-        "quantity": data[0]["Quantity"],
-        "measurement": data[0]["Measurement"],
-        "cause": data[0]["Cause"],
-        "recommendation": data[0]["Recommendation"],
-        "remarks": data[0]["Remarks"],
-        "supervisor": data[0]["Supervisor"],
-        "via": data[0]["Via"],
-        "acknowledgement": data[0]["Acknowledgement"],
-        "bbox": r_bbox,
-    }
-    selected_template = 1
+#     report_data = {
+#         "name": data[0]["Name"],
+#         "ins_type": data[0]["Inspection Type"],
+#         "ins_date": data[0]["Inspection Date"],
+#         "road_type": data[0]["RoadType"],
+#         "type": data[0]["Type"],
+#         "latitude": data[0]["Latitude"],
+#         "longitude": data[0]["Longitude"],
+#         "inspector": data[0]["Inspector"],
+#         "severity": data[0]["Severity"],
+#         "image": data[0]["Image"],
+#         "report_id": data[0]["ReportID"],
+#         "road": data[0]["Road"],
+#         "quantity": data[0]["Quantity"],
+#         "measurement": data[0]["Measurement"],
+#         "cause": data[0]["Cause"],
+#         "recommendation": data[0]["Recommendation"],
+#         "remarks": data[0]["Remarks"],
+#         "supervisor": data[0]["Supervisor"],
+#         "via": data[0]["Via"],
+#         "acknowledgement": data[0]["Acknowledgement"],
+#         "bbox": r_bbox,
+#     }
+#     selected_template = 1
     # generate_report(report_data, selected_template, 'download')
 
 def saving_reportdata(db,data):
@@ -1080,8 +1566,8 @@ def saving_reportdata(db,data):
     {
         "$lookup": {
             "from": "image",
-            "localField": "imageID",
-            "foreignField": "imageID",
+            "localField": "imageid",
+            "foreignField": "imageid",
             "as": "imageData"
         }
     },
@@ -1098,8 +1584,8 @@ def saving_reportdata(db,data):
     {
         "$lookup": {
             "from": "defect",
-            "localField": "imageID",
-            "foreignField": "imageID",
+            "localField": "imageid",
+            "foreignField": "imageid",
             "as": "defectData"
         }
     },
@@ -1185,20 +1671,20 @@ def generate_new(db, report_id,defect_type,name,image,defectRepeatedValue):
     if not report:
         raise ValueError(f"Report with reportID {report_id} not found.")
 
-    image_id = report["imageID"]
+    image_id = report["imageid"]
 
-    # Step 2: Fetch image by imageID
-    image_doc = db.image.find_one({"imageID": image_id})
+    # Step 2: Fetch image by imageid
+    image_doc = db.images.find_one({"imageid": image_id})
     if not image_doc:
-        raise ValueError(f"Image with imageID {image_id} not found.")
+        raise ValueError(f"Image with imageid {image_id} not found.")
 
-    # Step 3: Fetch defect using imageID and partial match on outputLabel
+    # Step 3: Fetch defect using imageid and partial match on outputLabel
     defect = db.defect.find_one({
-        "imageID": image_id,
+        "imageid": image_id,
         "outputLabel": {"$regex": defect_type, "$options": "i"}
     })
     if not defect:
-        raise ValueError(f"No defect found for imageID {image_id} with label containing '{defect_type}'.")
+        raise ValueError(f"No defect found for imageid {image_id} with label containing '{defect_type}'.")
 
     # Assemble the final data using provided + fetched values
     report_data = {
@@ -1251,8 +1737,8 @@ def changing_reportdata(db,data):
         {
             "$lookup": {
                 "from": "image",
-                "localField": "imageID",
-                "foreignField": "imageID",
+                "localField": "imageid",
+                "foreignField": "imageid",
                 "as": "imageData"
             }
         },
@@ -1265,8 +1751,8 @@ def changing_reportdata(db,data):
         {
             "$lookup": {
                 "from": "defect",
-                "localField": "imageID",
-                "foreignField": "imageID",
+                "localField": "imageid",
+                "foreignField": "imageid",
                 "as": "defectData"
             }
         },
@@ -1359,12 +1845,14 @@ defect_classes = {
 }
 
 
-def pipeline(db, inspectionDate, path,tog, user_id = 1, lat = None, lon = None, totalframes = 300, toggle_confidence=False, bid=None):
+def pipeline(db, inspectionDate, path,tog, user_id = 1, totalframes = 300, toggle_confidence=False, bid=None):
     print("Starting Pipeline")
-    print(user_id, lat, lon, totalframes, path, toggle_confidence)
+    # print(user_id, lat, lon, totalframes, path, toggle_confidence)
     # Creates batch in database, with relevant details
     try: 
-        new_batch(path, totalframes=totalframes, user_id=user_id, db=db)
+        response =new_batch(path, totalframes=totalframes, user_id=user_id, db=db)
+        print(response)
+        bid=response['videoid']
         print("Succesfully created new batch")
     except Exception as e:
         print(e)
@@ -1377,10 +1865,7 @@ def pipeline(db, inspectionDate, path,tog, user_id = 1, lat = None, lon = None, 
     try:
         lat = None
         lon = None
-        if lat or lon is None:
-            split_process(path, None, None, db=db, bid=bid)
-        else:
-            split_process(path, lat, lon, db=db,bid=bid)
+        split_process(path, lat, lon, inspectionDate,tog,db=db,bid=bid)
         print("Succesfully processed vidoes/images/folder")
     except Exception as e:
         print("Error Processing Video")
@@ -1388,25 +1873,24 @@ def pipeline(db, inspectionDate, path,tog, user_id = 1, lat = None, lon = None, 
         return "Error Processing Video"
     
     # Inferences frames through all enabled AI engines.
-    make_inferences(db,tog,bid=bid, inspectionDate=inspectionDate, toggle_confidence=False)
-    print("Succesfully made inferences")
     
+    #setting progress to complete using batchid
     if bid is not None:
-        db.batch.update_one({"batchID": bid}, {"$set": {"status": "completed"}})
+        db.videos.update_one({"videoid": bid}, {"$set": {"processingstatus": "completed"}})
 
 # Re-annotate images
 def reannotate(file_paths, labels, xyxy, db, batchIDs):
     image_ids = []
     print(labels, xyxy)
-    # Get imageIDs based on file_paths
+    # Get imageids based on file_paths
     for i, file_path in enumerate(file_paths):
         print(i, file_path)
-        imageID_by_path_and_batch_pipeline = [
+        imageid_by_path_and_batch_pipeline = [
         {
             "$lookup": {
                 "from": "batchImage",
-                "localField": "imageID",
-                "foreignField": "imageID",
+                "localField": "imageid",
+                "foreignField": "imageid",
                 "as": "batchDetails"
             }
         },
@@ -1419,24 +1903,24 @@ def reannotate(file_paths, labels, xyxy, db, batchIDs):
         {
             "$project": {
                 "_id": 0,  # Exclude the _id field
-                "imageID": 1  # Include the imageID field
+                "imageid": 1  # Include the imageid field
             }
         }
     ]
         
 
         try:
-            image = next(db.image.aggregate(imageID_by_path_and_batch_pipeline))
+            image = next(db.images.aggregate(imageid_by_path_and_batch_pipeline))
             print('image: ',image)
 
         except StopIteration:
             print(f"Image not found for file_path: {file_path}")
             continue
         if image:
-            image_id = image['imageID']
-            existing_defects = list(db.defect.find({"imageID": image_id}))
+            image_id = image['imageid']
+            existing_defects = list(db.defect.find({"imageid": image_id}))
             existing_defect_labels = set(
-                (d['outputLabel'].strip().lower(), d['imageID'], d['bbox']) for d in existing_defects
+                (d['outputLabel'].strip().lower(), d['imageid'], d['bbox']) for d in existing_defects
             )
 
             print('existing_defect_labels: ',existing_defect_labels)
@@ -1456,14 +1940,14 @@ def reannotate(file_paths, labels, xyxy, db, batchIDs):
                     current_max = list(db.defect.find().sort('defectID', -1).limit(1))
                     db.defect.insert_one({
                         "defectID": int(current_max[0]['defectID']) + 1 if current_max else 1, 
-                        "imageID": image_id,
+                        "imageid": image_id,
                         "outputLabel": outputLabel,
                         "outputID": 17,
                         "bbox": str(bboxes[j]),
                         "confidence": 1,
                         "severity": 2
                     })
-                    print(f"Inserted new defect for imageID: {image_id}, defectID: {int(current_max[0]['defectID']) + 1 if current_max else 1}, outputLabel: {outputLabel}")
+                    print(f"Inserted new defect for imageid: {image_id}, defectID: {int(current_max[0]['defectID']) + 1 if current_max else 1}, outputLabel: {outputLabel}")
             image_ids.append(image_id)
         else:  
             print(f"No image found for file_path: {file_path}")
@@ -1471,15 +1955,15 @@ def reannotate(file_paths, labels, xyxy, db, batchIDs):
         removed_defects = existing_defect_labels - new_defect_labels
         for defect in removed_defects:
             defectid = db.defect.find_one({
-                    "imageID": defect[1], 
+                    "imageid": defect[1], 
                     "outputLabel": defect[0],
                     "bbox": defect[2]
                     })['defectID']
-            db.defect.delete_one({"imageID": defect[1], 
+            db.defect.delete_one({"imageid": defect[1], 
                                   "outputLabel": defect[0],
                                 "bbox": defect[2]})
         
-            image_path=db.image.find_one({"imageID": image_id})['imagePath']
+            image_path=db.images.find_one({"imageid": image_id})['imagePath']
             image_name = os.path.basename(image_path)
             image_name = image_name + "_" + defectid
             os.remove(os.path.join("active_learning", "unedited", image_name))

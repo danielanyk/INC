@@ -32,8 +32,8 @@ db=client['newdb']
 #         {
 #             "$lookup": {
 #                 "from": "image",
-#                 "localField": "imageID",
-#                 "foreignField": "imageID",
+#                 "localField": "imageid",
+#                 "foreignField": "imageid",
 #                 "as": "imageData",
 #             }
 #         },
@@ -41,15 +41,15 @@ db=client['newdb']
 #         {
 #             "$lookup": {
 #                 "from": "defect",
-#                 "localField": "imageData.imageID",
-#                 "foreignField": "imageID",
+#                 "localField": "imageData.imageid",
+#                 "foreignField": "imageid",
 #                 "as": "defectData",
 #             }
 #         },
 #         {"$unwind": "$defectData"},
 #         {
 #             "$group": {
-#                 "_id": "$imageData.imageID",
+#                 "_id": "$imageData.imageid",
 #                 "reportID": {"$first": "$reportID"},
 #                 "inspectedBy": {"$first": "$inspectedBy"},
 #                 "inspectionDate": {"$first": "$inspectionDate"},
@@ -165,11 +165,11 @@ def get_amount_of_defects():
     return list(result)
 
 
-def get_bbox(imageID):
+def get_bbox(imageid):
     """
-    Returns a list of bounding box coordinates for a specific imageID
+    Returns a list of bounding box coordinates for a specific imageid
     """
-    results = db.defect.find({"imageID": imageID})
+    results = db.defect.find({"imageid": imageid})
 
     bounding_boxes = []
     for result in results:
@@ -186,16 +186,16 @@ def repeated_defects(types, road):
         {
             "$lookup": {
                 "from": "defect",
-                "localField": "imageID",
-                "foreignField": "imageID",
+                "localField": "imageid",
+                "foreignField": "imageid",
                 "as": "DefectData",
             }
         },
         {
             "$lookup": {
                 "from": "image",
-                "localField": "imageID",
-                "foreignField": "imageID",
+                "localField": "imageid",
+                "foreignField": "imageid",
                 "as": "ImageData",
             }
         },
@@ -254,16 +254,16 @@ def get_reports(tags=None, start=0, end=30, image_id=None):
             {
                 "$lookup": {
                     "from": "defect",
-                    "localField": "imageID",
-                    "foreignField": "imageID",
+                    "localField": "imageid",
+                    "foreignField": "imageid",
                     "as": "DefectData",
                 }
             },
             {
                 "$lookup": {
                     "from": "report",
-                    "localField": "imageID",
-                    "foreignField": "imageID",
+                    "localField": "imageid",
+                    "foreignField": "imageid",
                     "as": "ReportData",
                 }
             },
@@ -311,7 +311,7 @@ def get_reports(tags=None, start=0, end=30, image_id=None):
                     "Custom Tag": "$ReportData.tags",
                     "ReportID": "$ReportData.reportID",
                     "Road": "$road",
-                    "ImageID": "$imageID",
+                    "imageid": "$imageid",
                     "Quantity": "$ReportData.quantity",
                     "Measurement": "$ReportData.measurement",
                     "Cause": "$ReportData.cause",
@@ -329,7 +329,7 @@ def get_reports(tags=None, start=0, end=30, image_id=None):
         pipeline.append(
             {
                 "$match": {
-                    "ImageID": image_id,
+                    "imageid": image_id,
                 }
             }
         )

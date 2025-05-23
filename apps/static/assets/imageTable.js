@@ -96,17 +96,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const startButton = document.getElementById('start_video_process');
   const stopButton = document.getElementById('stopButton');
   const modal = document.getElementById('default-modal');
+  const fileInput = document.getElementById('dropzone-file');
 
-  // Open the modal on Start click
-  startButton.addEventListener('click', () => {
+  
+  startButton.addEventListener('click', (event) => {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      alert('Please upload a file before starting the process.');
+      return; // Do NOT open modal
+    }
+
+    // Manually open the modal
     console.log("start button clicked - opening modal");
     modal.classList.remove('hidden');
     modal.classList.add('flex');
   });
 
+
+  // const startButton = document.getElementById('start_video_process');
+  // const stopButton = document.getElementById('stopButton');
+  // const modal = document.getElementById('default-modal');
+    
+  // // Open the modal on Start click
+  // startButton.addEventListener('click', () => {
+  //   console.log("start button clicked - opening modal");
+  //   modal.classList.remove('hidden');
+  //   modal.classList.add('flex');
+  // });
+
   // Global function for Confirm button in modal
   window.handleConfirmClick = function () {
     // Close modal
+    console.log('inhandle confirm click')
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 
@@ -133,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let tog4 = checktoggle("toggle4");
     let tog5 = checktoggle("toggle5");
     let tog = [tog1, tog2, tog3, tog4, tog5];
-
+    let user_id = localStorage.getItem("userid");
+    console.log('user_id',user_id)
     let inspectionDate = document.getElementById('insp_date').value;
     console.log(bID,totalF,inspectionDate,Fpath)
     fetch('/start_process', {
@@ -144,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({
         total_frames: totalF,
         path: Fpath,
-        user_id: '1',
+        user_id: user_id,
         bid: bID,
         inspectionDate: inspectionDate,
         toggle: tog
