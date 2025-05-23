@@ -103,7 +103,7 @@ def apply_to_image(
         }
     ]
 
-    defected_image = list(db.image.aggregate(pipeline))
+    defected_image = list(db.images.aggregate(pipeline))
     
     # print(defected_image)
 

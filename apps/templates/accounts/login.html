@@ -1,6 +1,6 @@
 <script>
         window.onload = function () {
-            fetch('/check_user_collection')
+            fetch('/check_user_and_defecttype_collection')
         .then(response => response.text())
         .then(text => console.log("Server response:", text))
         .catch(error => console.error('Error checking/creating collection:', error));

@@ -20,21 +20,30 @@ echo loading in models
 curl -v -X post http://localhost:5002/api/load_model_17defects
 
 timeout /t 10 /nobreak >nul
+timeout /t 10 /nobreak >nul
 
+curl -v -X POST http://localhost:5001/api/load_model_raveling
 curl -v -X POST http://localhost:5001/api/load_model_raveling
 
 timeout /t 10 /nobreak >nul
+timeout /t 10 /nobreak >nul
 
+curl -v -X POST http://localhost:5003/api/load_model_kerb
 curl -v -X POST http://localhost:5003/api/load_model_kerb
 
 timeout /t 10 /nobreak >nul
+timeout /t 10 /nobreak >nul
 
+curl -v -X POST http://localhost:5004/api/load_model_paintSpillage
 curl -v -X POST http://localhost:5004/api/load_model_paintSpillage
 
 timeout /t 10 /nobreak >nul
+timeout /t 10 /nobreak >nul
 
 curl -v -X POST http://localhost:5005/api/load_model_severityAssessment
+curl -v -X POST http://localhost:5005/api/load_model_severityAssessment
 
+timeout /t 10 /nobreak >nul
 timeout /t 10 /nobreak >nul
 
 curl -v -X POST http://localhost:5007/api/load_model_llm

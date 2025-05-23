@@ -14,12 +14,15 @@ def reverse_geocode(lat, lon, buffer=40):
         data = response.json()
         if data.get("GeocodeInfo"):
             info = data["GeocodeInfo"][0]
-            return {
-                "BLOCK": info.get("BLOCK"),
-                "ROAD": info.get("ROAD"),
-                "BUILDING": info.get("BUILDING"),
-                "POSTALCODE": info.get("POSTALCODE"),
-            }
+            road=info.get("ROAD")
+            postalcode=info.get("POSTALCODE")
+            return road, postalcode
+            # return {
+            #     "BLOCK": info.get("BLOCK"),
+            #     "ROAD": info.get("ROAD"),
+            #     "BUILDING": info.get("BUILDING"),
+            #     "POSTALCODE": info.get("POSTALCODE"),
+            # }
     return None
 
 

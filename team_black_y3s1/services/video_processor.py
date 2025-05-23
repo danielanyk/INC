@@ -219,6 +219,11 @@ import json
 import subprocess
 import traceback
 
+import sys
+# from apps.config import Config  # If config.py is under apps/
+
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+
 
 BASE_DIR = os.path.dirname(__file__)
 EXIFTOOL_BINARY = os.path.join(BASE_DIR, "exiftool.exe")
